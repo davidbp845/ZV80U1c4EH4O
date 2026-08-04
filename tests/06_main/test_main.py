@@ -6,6 +6,9 @@ dependa de red ni de credenciales."""
 from unittest.mock import MagicMock, patch
 
 from application.orchestrator import OrquestadorAgente
+from adapters.out.repositorios_postgres import (
+    RepositorioCitasPostgres, RepositorioClientesPostgres, RepositorioPedidosPostgres,
+)
 
 
 def test_construir_sistema_conecta_las_piezas():
@@ -81,3 +84,38 @@ def test_construir_sistema_usa_llm_real_si_use_mock_llm_es_false(monkeypatch):
         orquestador, _ = main.construir_sistema("config/business.yaml")
 
     assert orquestador._llm is mock_llm_cls.return_value
+
+
+def test_construir_sistema_usa_repos_en_memoria_sin_database_url(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    from adapters.out.repositorios_memoria import RepositorioCitasMemoria
+    crear_reserva = orquestador._ejecutor._casos["crear_reserva"]
+    assert isinstance(crear_reserva._citas, RepositorioCitasMemoria)
+
+
+def test_construir_sistema_usa_repos_postgres_si_hay_database_url(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite://")
+    with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    crear_reserva = orquestador._ejecutor._casos["crear_reserva"]
+    cancelar_reserva = orquestador._ejecutor._casos["cancelar_reserva"]
+    registrar_pedido = orquestador._ejecutor._casos["registrar_pedido"]
+
+    assert isinstance(crear_reserva._citas, RepositorioCitasPostgres)
+    assert isinstance(crear_reserva._clientes, RepositorioClientesPostgres)
+    assert isinstance(cancelar_reserva._citas, RepositorioCitasPostgres)
+    assert isinstance(registrar_pedido._pedidos, RepositorioPedidosPostgres)

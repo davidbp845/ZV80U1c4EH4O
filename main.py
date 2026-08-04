@@ -42,11 +42,29 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
     config = cargar_config(ruta_config)
 
     # --- Repositorios (adaptadores de salida) ---
+    # Servicios y profesionales son catálogo: siempre se derivan del
+    # yaml, no necesitan sobrevivir a un reinicio.
     repo_servicios = RepositorioServiciosMemoria(construir_servicios(config))
     repo_profesionales = RepositorioProfesionalesMemoria(construir_profesionales(config))
-    repo_citas = RepositorioCitasMemoria()
-    repo_clientes = RepositorioClientesMemoria()
-    repo_pedidos = RepositorioPedidosMemoria()
+
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        # El esquema lo gestiona Alembic (`alembic upgrade head`), no
+        # el arranque de la app — evita que varias instancias
+        # compitan por crear/alterar tablas a la vez.
+        from adapters.out.repositorios_postgres import (
+            RepositorioCitasPostgres, RepositorioClientesPostgres,
+            RepositorioPedidosPostgres, crear_engine,
+        )
+        engine = crear_engine(database_url)
+        repo_citas = RepositorioCitasPostgres(engine)
+        repo_clientes = RepositorioClientesPostgres(engine)
+        repo_pedidos = RepositorioPedidosPostgres(engine)
+    else:
+        repo_citas = RepositorioCitasMemoria()
+        repo_clientes = RepositorioClientesMemoria()
+        repo_pedidos = RepositorioPedidosMemoria()
+
     conocimiento = RepositorioConocimientoChroma()
 
     usar_mock_llm = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"

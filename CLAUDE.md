@@ -19,6 +19,9 @@ export USE_MOCK_LLM=true        # optional, use ProveedorLLMMock instead of the 
 # Index the Obsidian vault into the RAG (Chroma) before first run
 python -m adapters.out.obsidian_ingest --vault ./vault_negocio
 
+export DATABASE_URL=postgresql://user:pass@localhost/orquestador  # optional; unset = citas/clientes/pedidos in-memory
+alembic upgrade head  # only if DATABASE_URL is set — applies/creates the Postgres schema
+
 # Run the system (starts FastAPI on :8000, and Telegram polling if configured)
 python main.py
 
@@ -46,9 +49,10 @@ Strict hexagonal architecture with dependency direction always pointing inward. 
 - **`domain/`** — entities (`entities.py`), abstract ports (`ports.py`), and use cases (`use_cases.py`). Pure Python, zero external dependencies (no LLM SDK, no DB driver, no web framework). This is the only layer that meaningfully differs between businesses (e.g. "book a table" instead of "book an appointment").
 - **`application/`** — the agent orchestrator (`orchestrator.py`), the tool schema + tool executor that bridges LLM tool calls to domain use cases (`tools.py`), and system-prompt construction from business config (`prompts.py`). Knows about the LLM tool-calling protocol but not about any specific channel (web vs Telegram) or specific LLM vendor.
 - **`adapters/in_/`** — inbound adapters (FastAPI web chat, Telegram bot). Pure translation layers: HTTP/Telegram ↔ `OrquestadorAgente.responder()`. No business logic ever belongs here. `fastapi_app.py` has `CORSMiddleware` enabled for `http://localhost:5173`/`:3000` (typical Vite/frontend dev origins) — add any other dev origins there.
-- **`adapters/out/`** — outbound adapters: `llm_anthropic.py` (Anthropic SDK implementing `ProveedorLLM`), `llm_mock.py` (`ProveedorLLMMock`, a heuristic fake of the same port — no network calls, used for frontend/client development without spending API tokens; toggled via `USE_MOCK_LLM` in `main.py::construir_sistema()`), `vector_store.py` (Chroma implementing `RepositorioConocimiento`), `obsidian_ingest.py` (chunks and indexes the Obsidian vault — the vault is the single source of truth for business knowledge/FAQs/pricing), `repositorios_memoria.py` (in-memory repos for citas/clientes/pedidos/servicios/profesionales, meant to be swapped for Postgres without touching domain or application code).
+- **`adapters/out/`** — outbound adapters: `llm_anthropic.py` (Anthropic SDK implementing `ProveedorLLM`), `llm_mock.py` (`ProveedorLLMMock`, a heuristic fake of the same port — no network calls, used for frontend/client development without spending API tokens; toggled via `USE_MOCK_LLM` in `main.py::construir_sistema()`), `vector_store.py` (Chroma implementing `RepositorioConocimiento`), `obsidian_ingest.py` (chunks and indexes the Obsidian vault — the vault is the single source of truth for business knowledge/FAQs/pricing), `repositorios_memoria.py` (in-memory repos for citas/clientes/pedidos/servicios/profesionales — always used for servicios/profesionales, since those are catalog data derived from `business.yaml` on every boot), `db_models.py` + `repositorios_postgres.py` (SQLModel-backed Postgres repos for citas/clientes/pedidos, the state that must survive a restart; used instead of the in-memory ones whenever `DATABASE_URL` is set in `main.py::construir_sistema()`).
 - **`config/`** — `business.yaml` declares one business's services, professionals, tone, and channels; `loader.py` parses it into domain entities.
 - **`main.py`** — the composition root. This is the *only* file allowed to know about concrete implementations; it wires adapters into use cases into the orchestrator. Swapping an adapter (e.g. Chroma → Qdrant, in-memory → Postgres, Telegram → WhatsApp) means writing a new class satisfying the same port and changing its instantiation here — nothing in `domain/` or `application/` changes.
+- **`migrations/`** — Alembic migrations for the Postgres schema (`db_models.py`'s `SQLModel.metadata`). Needs `DATABASE_URL` set (`migrations/env.py` reads it, loading `.env` the same way `main.py` does). New migration after changing `db_models.py`: `alembic revision --autogenerate -m "..."` — always read the generated file before applying, autogenerate doesn't catch everything (renames, some constraint changes).
 
 ### Request flow
 

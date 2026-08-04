@@ -1,0 +1,107 @@
+"""A diferencia de test_vector_store.py (que mockea el cliente
+externo), aquí usamos un motor SQLite en memoria real vía SQLModel en
+vez de mockear cada sentencia SQL: lo que hay que probar es que el
+mapeo fila<->entidad y las queries son correctos, y SQLAlchemy habla
+el mismo dialecto core independientemente del backend. No hace falta
+red ni credenciales ni un Postgres real."""
+from datetime import date, datetime
+
+from sqlmodel import create_engine
+
+from adapters.out.db_models import SQLModel
+from adapters.out.repositorios_postgres import (
+    RepositorioCitasPostgres, RepositorioClientesPostgres, RepositorioPedidosPostgres,
+)
+from domain.entities import Cita, Cliente, EstadoCita, EstadoPedido, LineaPedido, Pedido
+
+
+def _engine():
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    return engine
+
+
+def test_citas_guardar_y_filtrar_por_fecha():
+    repo = RepositorioCitasPostgres(_engine())
+    cita1 = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
+    cita2 = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 4, 9, 0), datetime(2026, 8, 4, 10, 0))
+    repo.guardar(cita1)
+    repo.guardar(cita2)
+
+    resultado = repo.citas_de_profesional_en_fecha("ana", date(2026, 8, 3))
+
+    assert [c.id for c in resultado] == [cita1.id]
+    assert resultado[0].estado == EstadoCita.PENDIENTE
+
+
+def test_citas_cancelar():
+    repo = RepositorioCitasPostgres(_engine())
+    cita = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
+    repo.guardar(cita)
+
+    repo.cancelar(cita.id)
+
+    resultado = repo.citas_de_profesional_en_fecha("ana", date(2026, 8, 3))
+    assert resultado[0].estado == EstadoCita.CANCELADA
+
+
+def test_citas_cancelar_id_inexistente_no_lanza():
+    repo = RepositorioCitasPostgres(_engine())
+    repo.cancelar("no_existe")  # no debe lanzar
+    repo.cancelar(None)  # no debe lanzar
+
+
+def test_clientes():
+    repo = RepositorioClientesPostgres(_engine())
+    cliente = Cliente(id="c1", nombre="Juan", telefono="600111222")
+    repo.guardar(cliente)
+
+    obtenido = repo.obtener("c1")
+
+    assert obtenido == cliente
+    assert repo.buscar_por_telefono("600111222") == cliente
+    assert repo.buscar_por_telefono("no_existe") is None
+    assert repo.obtener("no_existe") is None
+
+
+def test_clientes_guardar_es_upsert():
+    repo = RepositorioClientesPostgres(_engine())
+    repo.guardar(Cliente(id="c1", nombre="Juan"))
+    repo.guardar(Cliente(id="c1", nombre="Juan Actualizado"))
+
+    assert repo.obtener("c1").nombre == "Juan Actualizado"
+
+
+def test_pedidos_guardar_y_obtener_con_lineas():
+    repo = RepositorioPedidosPostgres(_engine())
+    pedido = Pedido.nuevo("c1", [
+        LineaPedido(servicio_id="s1", cantidad=2, notas="sin azúcar"),
+        LineaPedido(servicio_id="s2", cantidad=1),
+    ])
+    repo.guardar(pedido)
+
+    obtenido = repo.obtener(pedido.id)
+
+    assert obtenido.id == pedido.id
+    assert obtenido.cliente_id == "c1"
+    assert obtenido.estado == EstadoPedido.RECIBIDO
+    assert {(l.servicio_id, l.cantidad, l.notas) for l in obtenido.lineas} == {
+        ("s1", 2, "sin azúcar"), ("s2", 1, ""),
+    }
+
+
+def test_pedidos_guardar_de_nuevo_sustituye_las_lineas():
+    repo = RepositorioPedidosPostgres(_engine())
+    pedido = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    repo.guardar(pedido)
+
+    pedido.lineas = [LineaPedido(servicio_id="s2", cantidad=5)]
+    repo.guardar(pedido)
+
+    obtenido = repo.obtener(pedido.id)
+    assert [(l.servicio_id, l.cantidad) for l in obtenido.lineas] == [("s2", 5)]
+
+
+def test_pedidos_obtener_inexistente_devuelve_none():
+    repo = RepositorioPedidosPostgres(_engine())
+    assert repo.obtener("no_existe") is None

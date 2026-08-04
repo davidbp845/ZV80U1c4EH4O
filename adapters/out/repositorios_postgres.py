@@ -1,0 +1,184 @@
+"""Implementaciones Postgres (vía SQLModel) de los repositorios de
+estado mutable: Citas, Clientes y Pedidos. Servicios y Profesionales
+siguen viniendo de config/business.yaml a través de
+RepositorioServiciosMemoria/RepositorioProfesionalesMemoria — son
+catálogo, no estado que deba sobrevivir a un reinicio.
+
+Cambiar de motor (ej. volver a memoria, o pasar a otro store) es
+sustituir la instanciación en main.py::construir_sistema(); estas
+clases implementan los mismos puertos de domain/ports.py y nada más
+en el sistema necesita saber que existen."""
+from __future__ import annotations
+
+import os
+from datetime import date
+from uuid import UUID
+
+from sqlmodel import Session, SQLModel, create_engine, select
+
+from domain.entities import Cita, Cliente, EstadoCita, EstadoPedido, LineaPedido, Pedido
+from domain.ports import RepositorioCitas, RepositorioClientes, RepositorioPedidos
+
+from .db_models import CitaDB, ClienteDB, LineaPedidoDB, PedidoDB
+
+
+def _como_uuid(valor) -> UUID | None:
+    """IDs de dominio no tienen por qué venir ya como UUID (ej. un
+    id de tool call inventado por el LLM). Un id con formato inválido
+    se trata como 'no existe', igual que en los repos en memoria, en
+    vez de propagar el error de parseo."""
+    if isinstance(valor, UUID):
+        return valor
+    try:
+        return UUID(str(valor))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def crear_engine(url: str | None = None):
+    url = url or os.environ["DATABASE_URL"]
+    return create_engine(url)
+
+
+def crear_tablas(engine) -> None:
+    """Crea las tablas que falten a partir de la metadata actual, sin
+    pasar por Alembic. Útil en tests o scripts puntuales contra una
+    base efímera (ej. SQLite en memoria); el esquema de la app real se
+    gestiona con `alembic upgrade head` (ver migrations/), no con esta
+    función."""
+    SQLModel.metadata.create_all(engine)
+
+
+class RepositorioCitasPostgres(RepositorioCitas):
+    def __init__(self, engine):
+        self._engine = engine
+
+    def guardar(self, cita: Cita) -> None:
+        with Session(self._engine) as sesion:
+            sesion.merge(CitaDB(
+                id=cita.id,
+                servicio_id=cita.servicio_id,
+                profesional_id=cita.profesional_id,
+                cliente_id=cita.cliente_id,
+                inicio=cita.inicio,
+                fin=cita.fin,
+                estado=cita.estado.value,
+            ))
+            sesion.commit()
+
+    def citas_de_profesional_en_fecha(self, profesional_id: str, dia: date) -> list[Cita]:
+        with Session(self._engine) as sesion:
+            filas = sesion.exec(
+                select(CitaDB).where(CitaDB.profesional_id == profesional_id)
+            ).all()
+            return [self._a_entidad(f) for f in filas if f.inicio.date() == dia]
+
+    def cancelar(self, cita_id) -> None:
+        cita_id = _como_uuid(cita_id)
+        if cita_id is None:
+            return
+        with Session(self._engine) as sesion:
+            fila = sesion.get(CitaDB, cita_id)
+            if fila is not None:
+                fila.estado = EstadoCita.CANCELADA.value
+                sesion.add(fila)
+                sesion.commit()
+
+    @staticmethod
+    def _a_entidad(fila: CitaDB) -> Cita:
+        return Cita(
+            id=fila.id,
+            servicio_id=fila.servicio_id,
+            profesional_id=fila.profesional_id,
+            cliente_id=fila.cliente_id,
+            inicio=fila.inicio,
+            fin=fila.fin,
+            estado=EstadoCita(fila.estado),
+        )
+
+
+class RepositorioClientesPostgres(RepositorioClientes):
+    def __init__(self, engine):
+        self._engine = engine
+
+    def obtener(self, cliente_id: str) -> Cliente | None:
+        with Session(self._engine) as sesion:
+            fila = sesion.get(ClienteDB, cliente_id)
+            return self._a_entidad(fila) if fila else None
+
+    def guardar(self, cliente: Cliente) -> None:
+        with Session(self._engine) as sesion:
+            sesion.merge(ClienteDB(
+                id=cliente.id,
+                nombre=cliente.nombre,
+                telefono=cliente.telefono,
+                email=cliente.email,
+                notas=cliente.notas,
+            ))
+            sesion.commit()
+
+    def buscar_por_telefono(self, telefono: str) -> Cliente | None:
+        with Session(self._engine) as sesion:
+            fila = sesion.exec(
+                select(ClienteDB).where(ClienteDB.telefono == telefono)
+            ).first()
+            return self._a_entidad(fila) if fila else None
+
+    @staticmethod
+    def _a_entidad(fila: ClienteDB) -> Cliente:
+        return Cliente(
+            id=fila.id, nombre=fila.nombre, telefono=fila.telefono,
+            email=fila.email, notas=fila.notas,
+        )
+
+
+class RepositorioPedidosPostgres(RepositorioPedidos):
+    def __init__(self, engine):
+        self._engine = engine
+
+    def guardar(self, pedido: Pedido) -> None:
+        with Session(self._engine) as sesion:
+            sesion.merge(PedidoDB(
+                id=pedido.id,
+                cliente_id=pedido.cliente_id,
+                estado=pedido.estado.value,
+                creado_en=pedido.creado_en,
+            ))
+            # Las líneas no tienen identidad propia en el dominio: se
+            # sustituyen enteras en cada guardado en vez de intentar
+            # diffear la lista.
+            lineas_previas = sesion.exec(
+                select(LineaPedidoDB).where(LineaPedidoDB.pedido_id == pedido.id)
+            ).all()
+            for linea in lineas_previas:
+                sesion.delete(linea)
+            for linea in pedido.lineas:
+                sesion.add(LineaPedidoDB(
+                    pedido_id=pedido.id,
+                    servicio_id=linea.servicio_id,
+                    cantidad=linea.cantidad,
+                    notas=linea.notas,
+                ))
+            sesion.commit()
+
+    def obtener(self, pedido_id) -> Pedido | None:
+        pedido_id = _como_uuid(pedido_id)
+        if pedido_id is None:
+            return None
+        with Session(self._engine) as sesion:
+            cabecera = sesion.get(PedidoDB, pedido_id)
+            if cabecera is None:
+                return None
+            lineas = sesion.exec(
+                select(LineaPedidoDB).where(LineaPedidoDB.pedido_id == pedido_id)
+            ).all()
+            return Pedido(
+                id=cabecera.id,
+                cliente_id=cabecera.cliente_id,
+                lineas=[
+                    LineaPedido(servicio_id=l.servicio_id, cantidad=l.cantidad, notas=l.notas)
+                    for l in lineas
+                ],
+                estado=EstadoPedido(cabecera.estado),
+                creado_en=cabecera.creado_en,
+            )

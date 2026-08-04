@@ -7,3 +7,6 @@ chromadb>=0.5
 python-frontmatter>=1.1
 PyYAML>=6.0
 python-dotenv>=1.0
+sqlmodel>=0.0.21
+psycopg2-binary>=2.9
+alembic>=1.13
