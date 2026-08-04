@@ -20,9 +20,21 @@ python -m adapters.out.obsidian_ingest --vault ./vault_negocio
 
 # Run the system (starts FastAPI on :8000, and Telegram polling if configured)
 python main.py
+
+# Tests
+pip install -r requirements-dev.txt
+pytest                                  # run the whole suite
+pytest tests/01_domain                  # run one layer only
+pytest tests/03_application/test_orchestrator.py::test_da_mensaje_de_fallback_tras_agotar_iteraciones  # single test
 ```
 
-There is no test suite, lint config, or CI yet in this repo — don't assume `pytest`/`ruff`/`mypy` are wired up; check `requirements.txt` before assuming a tool is available.
+There is no lint config or CI yet in this repo — don't assume `ruff`/`mypy` are wired up; check `requirements-dev.txt` before assuming a tool is available.
+
+### Tests
+
+`tests/` mirrors the dependency order of the architecture, and directories are numbered (`01_domain`, `02_config`, `03_application`, `04_adapters_out`, `05_adapters_in`, `06_main`) so the suite runs innermost-layer-first — the same order you'd want to debug a failure in. Domain tests use small hand-written fakes of the ports instead of the real adapters; adapter tests mock the external SDK/client (`anthropic.Anthropic`, `chromadb.PersistentClient`) rather than hitting real network or requiring credentials — nothing in the suite needs `ANTHROPIC_API_KEY` set or a running Chroma/Telegram backend. A root `conftest.py` puts the repo root on `sys.path` so `domain`/`application`/`adapters`/`config` are importable without installing the project as a package.
+
+One gotcha the tests work around: `adapters/in_/fastapi_app.py` defines `app` and `_sesiones` at module scope, and `crear_router()` adds routes to that same shared `app` on every call — calling it twice registers duplicate routes, and Starlette keeps routing to whichever was registered first. `tests/05_adapters_in/test_fastapi_app.py` reloads the module per test to get an isolated `app`/`_sesiones` each time; keep that pattern if you add more tests there.
 
 The web chat endpoint is `POST http://localhost:8000/chat` with body `{"usuario_id": "...", "mensaje": "..."}`.
 

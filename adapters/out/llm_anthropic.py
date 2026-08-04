@@ -10,7 +10,7 @@ from domain.ports import ProveedorLLM
 
 
 class ProveedorLLMAnthropic(ProveedorLLM):
-    def __init__(self, modelo: str = "claude-sonnet-4-6", api_key: str | None = None):
+    def __init__(self, modelo: str = "claude-sonnet-5", api_key: str | None = None):
         self._client = Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
         self._modelo = modelo
 

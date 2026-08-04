@@ -49,6 +49,21 @@ python main.py
 El chat web queda disponible en `POST http://localhost:8000/chat`
 con body `{"usuario_id": "...", "mensaje": "..."}`.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Los tests viven en `tests/`, organizados en carpetas numeradas que
+siguen el mismo orden de dependencia que la arquitectura hexagonal
+(dominio → config → aplicación → adaptadores de salida →
+adaptadores de entrada → composition root), de forma que se ejecutan
+de dentro hacia afuera. No requieren `ANTHROPIC_API_KEY`, red ni
+servicios externos: los adaptadores de salida se prueban mockeando
+el SDK/cliente correspondiente (Anthropic, Chroma).
+
 ## Cómo extender a otro negocio
 
 1. Duplica `config/business.yaml` y ajusta servicios/profesionales/tono.
@@ -80,3 +95,5 @@ Ejemplo: pasar de repositorios en memoria a Postgres.
   testear sin mocks pesados).
 - Adaptador de salida para notificaciones (confirmaciones de cita
   por Telegram/email) implementando `NotificadorMensajes`.
+- Lint/type-checking (`ruff`, `mypy`) y CI que ejecute `pytest` en
+  cada push.
