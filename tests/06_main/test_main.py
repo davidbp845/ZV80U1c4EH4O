@@ -43,3 +43,41 @@ def test_construir_sistema_carga_servicios_y_profesionales_del_yaml():
 
     assert "masaje_relajante_60" in ids_servicios
     assert "masaje_descontracturante_45" in ids_servicios
+
+
+def test_construir_sistema_usa_llm_real_por_defecto(monkeypatch):
+    monkeypatch.delenv("USE_MOCK_LLM", raising=False)
+    with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    assert orquestador._llm is mock_llm_cls.return_value
+
+
+def test_construir_sistema_usa_llm_mock_si_use_mock_llm_es_true(monkeypatch):
+    monkeypatch.setenv("USE_MOCK_LLM", "true")
+    with patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    from adapters.out.llm_mock import ProveedorLLMMock
+    assert isinstance(orquestador._llm, ProveedorLLMMock)
+
+
+def test_construir_sistema_usa_llm_real_si_use_mock_llm_es_false(monkeypatch):
+    monkeypatch.setenv("USE_MOCK_LLM", "false")
+    with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    assert orquestador._llm is mock_llm_cls.return_value

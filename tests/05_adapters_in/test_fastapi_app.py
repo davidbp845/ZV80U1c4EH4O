@@ -64,3 +64,28 @@ def test_chat_valida_payload_incompleto(cliente):
     client, _, _ = cliente
     respuesta = client.post("/chat", json={"usuario_id": "u3"})
     assert respuesta.status_code == 422
+
+
+@pytest.mark.parametrize("origen", ["http://localhost:5173", "http://localhost:3000"])
+def test_cors_permite_origenes_de_dev_habituales(cliente, origen):
+    client, _, _ = cliente
+    respuesta = client.options(
+        "/chat",
+        headers={
+            "Origin": origen,
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert respuesta.headers["access-control-allow-origin"] == origen
+
+
+def test_cors_rechaza_origen_no_autorizado(cliente):
+    client, _, _ = cliente
+    respuesta = client.options(
+        "/chat",
+        headers={
+            "Origin": "http://evil.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert "access-control-allow-origin" not in respuesta.headers

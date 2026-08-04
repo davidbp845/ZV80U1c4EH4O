@@ -7,6 +7,7 @@ que toca saberlo.
 """
 from __future__ import annotations
 
+import os
 import threading
 
 from dotenv import load_dotenv
@@ -20,6 +21,7 @@ import uvicorn
 from adapters.in_.fastapi_app import crear_router
 from adapters.in_.telegram_bot import crear_bot
 from adapters.out.llm_anthropic import ProveedorLLMAnthropic
+from adapters.out.llm_mock import ProveedorLLMMock
 from adapters.out.repositorios_memoria import (
     RepositorioCitasMemoria, RepositorioClientesMemoria,
     RepositorioPedidosMemoria, RepositorioProfesionalesMemoria,
@@ -46,7 +48,9 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
     repo_clientes = RepositorioClientesMemoria()
     repo_pedidos = RepositorioPedidosMemoria()
     conocimiento = RepositorioConocimientoChroma()
-    llm = ProveedorLLMAnthropic()
+
+    usar_mock_llm = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
+    llm = ProveedorLLMMock() if usar_mock_llm else ProveedorLLMAnthropic()
 
     # --- Casos de uso (dominio) ---
     disponibilidad = ComprobarDisponibilidad(repo_servicios, repo_profesionales, repo_citas)
@@ -81,7 +85,6 @@ def main():
     print("Chat web disponible en http://localhost:8000/chat")
 
     if config.get("canales", {}).get("telegram"):
-        import os
         token = os.environ.get("TELEGRAM_BOT_TOKEN")
         if token:
             bot = crear_bot(token, orquestador)

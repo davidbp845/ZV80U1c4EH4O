@@ -6,11 +6,22 @@ HTTP <-> orquestador.
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from application.orchestrator import OrquestadorAgente, SesionConversacion
 
 app = FastAPI(title="Orquestador agéntico — chat web")
+
+# Orígenes de dev habituales (Vite, alternativa común en 3000) para que
+# un frontend en desarrollo pueda llamar al backend sin bloqueo CORS.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # En producción, las sesiones deberían persistirse (Redis, DB) en vez
 # de vivir en memoria del proceso.

@@ -14,6 +14,7 @@ pip install -r requirements.txt
 
 export ANTHROPIC_API_KEY=sk-...
 export TELEGRAM_BOT_TOKEN=...   # optional, only if canales.telegram is enabled
+export USE_MOCK_LLM=true        # optional, use ProveedorLLMMock instead of the real Anthropic API (no key needed, no tokens spent)
 
 # Index the Obsidian vault into the RAG (Chroma) before first run
 python -m adapters.out.obsidian_ingest --vault ./vault_negocio
@@ -44,8 +45,8 @@ Strict hexagonal architecture with dependency direction always pointing inward. 
 
 - **`domain/`** — entities (`entities.py`), abstract ports (`ports.py`), and use cases (`use_cases.py`). Pure Python, zero external dependencies (no LLM SDK, no DB driver, no web framework). This is the only layer that meaningfully differs between businesses (e.g. "book a table" instead of "book an appointment").
 - **`application/`** — the agent orchestrator (`orchestrator.py`), the tool schema + tool executor that bridges LLM tool calls to domain use cases (`tools.py`), and system-prompt construction from business config (`prompts.py`). Knows about the LLM tool-calling protocol but not about any specific channel (web vs Telegram) or specific LLM vendor.
-- **`adapters/in_/`** — inbound adapters (FastAPI web chat, Telegram bot). Pure translation layers: HTTP/Telegram ↔ `OrquestadorAgente.responder()`. No business logic ever belongs here.
-- **`adapters/out/`** — outbound adapters: `llm_anthropic.py` (Anthropic SDK implementing `ProveedorLLM`), `vector_store.py` (Chroma implementing `RepositorioConocimiento`), `obsidian_ingest.py` (chunks and indexes the Obsidian vault — the vault is the single source of truth for business knowledge/FAQs/pricing), `repositorios_memoria.py` (in-memory repos for citas/clientes/pedidos/servicios/profesionales, meant to be swapped for Postgres without touching domain or application code).
+- **`adapters/in_/`** — inbound adapters (FastAPI web chat, Telegram bot). Pure translation layers: HTTP/Telegram ↔ `OrquestadorAgente.responder()`. No business logic ever belongs here. `fastapi_app.py` has `CORSMiddleware` enabled for `http://localhost:5173`/`:3000` (typical Vite/frontend dev origins) — add any other dev origins there.
+- **`adapters/out/`** — outbound adapters: `llm_anthropic.py` (Anthropic SDK implementing `ProveedorLLM`), `llm_mock.py` (`ProveedorLLMMock`, a heuristic fake of the same port — no network calls, used for frontend/client development without spending API tokens; toggled via `USE_MOCK_LLM` in `main.py::construir_sistema()`), `vector_store.py` (Chroma implementing `RepositorioConocimiento`), `obsidian_ingest.py` (chunks and indexes the Obsidian vault — the vault is the single source of truth for business knowledge/FAQs/pricing), `repositorios_memoria.py` (in-memory repos for citas/clientes/pedidos/servicios/profesionales, meant to be swapped for Postgres without touching domain or application code).
 - **`config/`** — `business.yaml` declares one business's services, professionals, tone, and channels; `loader.py` parses it into domain entities.
 - **`main.py`** — the composition root. This is the *only* file allowed to know about concrete implementations; it wires adapters into use cases into the orchestrator. Swapping an adapter (e.g. Chroma → Qdrant, in-memory → Postgres, Telegram → WhatsApp) means writing a new class satisfying the same port and changing its instantiation here — nothing in `domain/` or `application/` changes.
 
