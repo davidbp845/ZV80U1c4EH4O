@@ -11,11 +11,29 @@ from chromadb.utils import embedding_functions
 from domain.ports import RepositorioConocimiento
 
 
+# DefaultEmbeddingFunction (all-MiniLM-L6-v2) está entrenado sobre
+# todo en inglés: con contenido y queries en español el ranking
+# semántico es pobre (comprobado: un fragmento con el precio exacto
+# quedaba en el puesto 9 de 12 para la query "precios"). Este modelo
+# multilingüe da resultados muchísimo mejores en español.
+MODELO_EMBEDDINGS_POR_DEFECTO = "paraphrase-multilingual-MiniLM-L12-v2"
+
+
 class RepositorioConocimientoChroma(RepositorioConocimiento):
-    def __init__(self, ruta_datos: str | None = None, coleccion: str = "conocimiento_negocio"):
+    def __init__(
+        self,
+        ruta_datos: str | None = None,
+        coleccion: str = "conocimiento_negocio",
+        modelo_embeddings: str | None = None,
+    ):
         ruta_datos = ruta_datos or os.environ.get("CHROMA_PATH", "./chroma_data")
+        modelo_embeddings = modelo_embeddings or os.environ.get(
+            "CHROMA_EMBEDDING_MODEL", MODELO_EMBEDDINGS_POR_DEFECTO
+        )
         self._client = chromadb.PersistentClient(path=ruta_datos)
-        self._embed_fn = embedding_functions.DefaultEmbeddingFunction()
+        self._embed_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=modelo_embeddings
+        )
         self._coleccion = self._client.get_or_create_collection(
             name=coleccion, embedding_function=self._embed_fn
         )

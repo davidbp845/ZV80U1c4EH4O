@@ -5,12 +5,14 @@ correctamente el puerto RepositorioConocimiento a llamadas de
 chromadb."""
 from unittest.mock import MagicMock, patch
 
-from adapters.out.vector_store import RepositorioConocimientoChroma
+from adapters.out.vector_store import (
+    MODELO_EMBEDDINGS_POR_DEFECTO, RepositorioConocimientoChroma,
+)
 
 
 def _construir_con_mocks(ruta_datos="./chroma_test", **kwargs):
     with patch("adapters.out.vector_store.chromadb.PersistentClient") as mock_client_cls, \
-         patch("adapters.out.vector_store.embedding_functions.DefaultEmbeddingFunction") as mock_embed_cls:
+         patch("adapters.out.vector_store.embedding_functions.SentenceTransformerEmbeddingFunction") as mock_embed_cls:
         mock_client = MagicMock()
         mock_coleccion = MagicMock()
         mock_client.get_or_create_collection.return_value = mock_coleccion
@@ -33,10 +35,26 @@ def test_inicializa_cliente_persistente_en_la_ruta_indicada():
 def test_usa_chroma_path_del_entorno_si_no_se_indica_ruta(monkeypatch):
     monkeypatch.setenv("CHROMA_PATH", "/env/chroma")
     with patch("adapters.out.vector_store.chromadb.PersistentClient") as mock_client_cls, \
-         patch("adapters.out.vector_store.embedding_functions.DefaultEmbeddingFunction"):
+         patch("adapters.out.vector_store.embedding_functions.SentenceTransformerEmbeddingFunction"):
         mock_client_cls.return_value.get_or_create_collection.return_value = MagicMock()
         RepositorioConocimientoChroma()
         mock_client_cls.assert_called_once_with(path="/env/chroma")
+
+
+def test_usa_modelo_multilingue_por_defecto():
+    _, _, _, _, mock_embed_cls = _construir_con_mocks()
+    mock_embed_cls.assert_called_once_with(model_name=MODELO_EMBEDDINGS_POR_DEFECTO)
+
+
+def test_usa_modelo_embeddings_del_entorno_si_se_indica(monkeypatch):
+    monkeypatch.setenv("CHROMA_EMBEDDING_MODEL", "otro-modelo")
+    _, _, _, _, mock_embed_cls = _construir_con_mocks()
+    mock_embed_cls.assert_called_once_with(model_name="otro-modelo")
+
+
+def test_usa_modelo_embeddings_explicito_si_se_indica():
+    _, _, _, _, mock_embed_cls = _construir_con_mocks(modelo_embeddings="otro-modelo-2")
+    mock_embed_cls.assert_called_once_with(model_name="otro-modelo-2")
 
 
 def test_indexar_fragmentos_llama_a_upsert_con_ids_documentos_y_metadatos():
