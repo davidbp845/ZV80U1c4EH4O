@@ -1,0 +1,40 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Bytecode y cachés de Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Variables de entorno y secretos — NUNCA subir API keys al repo
+.env
+!.env.example
+*.key
+
+# Datos generados en runtime — no son código, se regeneran
+chroma_data/
+
+# Vault de Obsidian: contiene el conocimiento del negocio (precios,
+# datos de clientes en notas, etc.). Normalmente NO debería ir en el
+# mismo repo público del código, o al menos no en uno público.
+# Si quieres versionarlo, hazlo en un repo privado aparte o quita
+# esta línea conscientemente.
+vault_negocio/
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

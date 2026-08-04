@@ -1,0 +1,36 @@
+# Configuración declarativa del negocio. Para adaptar el sistema a
+# otra empresa, se copia este fichero y se ajustan los valores —
+# el dominio y el orquestador no cambian.
+
+nombre: "Centro de Masajes Serenity"
+tono: "cercano, profesional y relajado"
+instrucciones_extra: >
+  Si un cliente pregunta por dolencias médicas graves, recomienda
+  consultar con un profesional sanitario antes de reservar.
+
+vault_obsidian: "./vault_negocio"
+
+canales:
+  web: true
+  telegram: true
+
+servicios:
+  - id: "masaje_relajante_60"
+    nombre: "Masaje relajante 60 min"
+    duracion_minutos: 60
+    precio: 55.0
+  - id: "masaje_descontracturante_45"
+    nombre: "Masaje descontracturante 45 min"
+    duracion_minutos: 45
+    precio: 48.0
+
+profesionales:
+  - id: "ana"
+    nombre: "Ana García"
+    servicios_ids: ["masaje_relajante_60", "masaje_descontracturante_45"]
+    horario_semanal:
+      lunes: ["09:00", "18:00"]
+      martes: ["09:00", "18:00"]
+      miercoles: ["09:00", "18:00"]
+      jueves: ["09:00", "18:00"]
+      viernes: ["09:00", "15:00"]

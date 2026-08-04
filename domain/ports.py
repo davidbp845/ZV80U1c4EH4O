@@ -1,0 +1,100 @@
+"""
+Puertos: contratos que el dominio necesita y que los adaptadores
+implementan. El dominio depende de estas interfaces, nunca de una
+implementación concreta (Postgres, Anthropic, Telegram...).
+
+Esto es lo que te da la modularidad real: cambiar de LLM o de canal
+de mensajería es escribir un adaptador nuevo que cumpla el puerto,
+sin tocar una sola línea del dominio.
+"""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from datetime import date, datetime
+
+from .entities import (
+    Cita, Cliente, Pedido, Profesional, Servicio, SlotDisponible,
+)
+
+
+# ---------- Puertos de salida: persistencia ----------
+
+class RepositorioServicios(ABC):
+    @abstractmethod
+    def obtener(self, servicio_id: str) -> Servicio | None: ...
+
+    @abstractmethod
+    def listar(self) -> list[Servicio]: ...
+
+
+class RepositorioProfesionales(ABC):
+    @abstractmethod
+    def obtener(self, profesional_id: str) -> Profesional | None: ...
+
+    @abstractmethod
+    def listar_por_servicio(self, servicio_id: str) -> list[Profesional]: ...
+
+
+class RepositorioCitas(ABC):
+    @abstractmethod
+    def guardar(self, cita: Cita) -> None: ...
+
+    @abstractmethod
+    def citas_de_profesional_en_fecha(
+        self, profesional_id: str, dia: date
+    ) -> list[Cita]: ...
+
+    @abstractmethod
+    def cancelar(self, cita_id) -> None: ...
+
+
+class RepositorioClientes(ABC):
+    @abstractmethod
+    def obtener(self, cliente_id: str) -> Cliente | None: ...
+
+    @abstractmethod
+    def guardar(self, cliente: Cliente) -> None: ...
+
+    @abstractmethod
+    def buscar_por_telefono(self, telefono: str) -> Cliente | None: ...
+
+
+class RepositorioPedidos(ABC):
+    @abstractmethod
+    def guardar(self, pedido: Pedido) -> None: ...
+
+    @abstractmethod
+    def obtener(self, pedido_id) -> Pedido | None: ...
+
+
+# ---------- Puertos de salida: conocimiento e IA ----------
+
+class RepositorioConocimiento(ABC):
+    """RAG: recupera fragmentos relevantes del vault de Obsidian
+    (ya trocidos e indexados) para una consulta dada."""
+
+    @abstractmethod
+    def buscar(self, consulta: str, top_k: int = 5) -> list[str]: ...
+
+
+class ProveedorLLM(ABC):
+    """Adaptador hacia el proveedor de modelo (Anthropic, u otro)."""
+
+    @abstractmethod
+    def generar_respuesta(
+        self,
+        mensajes: list[dict],
+        herramientas: list[dict] | None = None,
+        system: str | None = None,
+    ) -> dict:
+        """Devuelve la respuesta cruda del modelo (texto y/o tool_use)."""
+        ...
+
+
+# ---------- Puertos de salida: notificaciones ----------
+
+class NotificadorMensajes(ABC):
+    """Envía mensajes salientes a un canal (Telegram, WhatsApp, email...)."""
+
+    @abstractmethod
+    def enviar(self, destinatario_id: str, texto: str) -> None: ...

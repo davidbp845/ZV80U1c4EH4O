@@ -1,0 +1,36 @@
+"""Implementación del puerto RepositorioConocimiento usando ChromaDB
+como vector store local. Cambiar a Qdrant/Pinecone = otra clase con
+el mismo puerto."""
+from __future__ import annotations
+
+import os
+
+import chromadb
+from chromadb.utils import embedding_functions
+
+from domain.ports import RepositorioConocimiento
+
+
+class RepositorioConocimientoChroma(RepositorioConocimiento):
+    def __init__(self, ruta_datos: str | None = None, coleccion: str = "conocimiento_negocio"):
+        ruta_datos = ruta_datos or os.environ.get("CHROMA_PATH", "./chroma_data")
+        self._client = chromadb.PersistentClient(path=ruta_datos)
+        self._embed_fn = embedding_functions.DefaultEmbeddingFunction()
+        self._coleccion = self._client.get_or_create_collection(
+            name=coleccion, embedding_function=self._embed_fn
+        )
+
+    def indexar_fragmentos(self, fragmentos: list[dict]) -> None:
+        """fragmentos: [{"id": str, "texto": str, "metadata": dict}, ...]"""
+        if not fragmentos:
+            return
+        self._coleccion.upsert(
+            ids=[f["id"] for f in fragmentos],
+            documents=[f["texto"] for f in fragmentos],
+            metadatas=[f.get("metadata", {}) for f in fragmentos],
+        )
+
+    def buscar(self, consulta: str, top_k: int = 5) -> list[str]:
+        resultado = self._coleccion.query(query_texts=[consulta], n_results=top_k)
+        documentos = resultado.get("documents", [[]])
+        return documentos[0] if documentos else []
