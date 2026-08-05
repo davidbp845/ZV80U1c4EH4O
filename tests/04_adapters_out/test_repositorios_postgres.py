@@ -10,7 +10,9 @@ from sqlmodel import create_engine
 
 from adapters.out.db_models import SQLModel
 from adapters.out.repositorios_postgres import (
-    RepositorioCitasPostgres, RepositorioClientesPostgres, RepositorioPedidosPostgres,
+    RepositorioCitasPostgres,
+    RepositorioClientesPostgres,
+    RepositorioPedidosPostgres,
 )
 from domain.entities import Cita, Cliente, EstadoCita, EstadoPedido, LineaPedido, Pedido
 
@@ -85,7 +87,7 @@ def test_pedidos_guardar_y_obtener_con_lineas():
     assert obtenido.id == pedido.id
     assert obtenido.cliente_id == "c1"
     assert obtenido.estado == EstadoPedido.RECIBIDO
-    assert {(l.servicio_id, l.cantidad, l.notas) for l in obtenido.lineas} == {
+    assert {(linea.servicio_id, linea.cantidad, linea.notas) for linea in obtenido.lineas} == {
         ("s1", 2, "sin azúcar"), ("s2", 1, ""),
     }
 
@@ -99,7 +101,7 @@ def test_pedidos_guardar_de_nuevo_sustituye_las_lineas():
     repo.guardar(pedido)
 
     obtenido = repo.obtener(pedido.id)
-    assert [(l.servicio_id, l.cantidad) for l in obtenido.lineas] == [("s2", 5)]
+    assert [(linea.servicio_id, linea.cantidad) for linea in obtenido.lineas] == [("s2", 5)]
 
 
 def test_pedidos_obtener_inexistente_devuelve_none():

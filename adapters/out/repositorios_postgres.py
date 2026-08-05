@@ -176,8 +176,8 @@ class RepositorioPedidosPostgres(RepositorioPedidos):
                 id=cabecera.id,
                 cliente_id=cabecera.cliente_id,
                 lineas=[
-                    LineaPedido(servicio_id=l.servicio_id, cantidad=l.cantidad, notas=l.notas)
-                    for l in lineas
+                    LineaPedido(servicio_id=linea.servicio_id, cantidad=linea.cantidad, notas=linea.notas)
+                    for linea in lineas
                 ],
                 estado=EstadoPedido(cabecera.estado),
                 creado_en=cabecera.creado_en,

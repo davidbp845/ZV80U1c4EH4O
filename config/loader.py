@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 from datetime import time
-from pathlib import Path
 
 import yaml
+from pydantic import ValidationError
 
+from config.schema import ConfigNegocio
 from domain.entities import Profesional, Servicio
 
 
 def cargar_config(ruta: str) -> dict:
     with open(ruta, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        datos = yaml.safe_load(f)
+
+    try:
+        config = ConfigNegocio.model_validate(datos)
+    except ValidationError as exc:
+        raise ValueError(f"Configuración inválida en {ruta}:\n{exc}") from exc
+
+    return config.model_dump()
 
 
 def _parse_hora(valor: str) -> time:

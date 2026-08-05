@@ -1,8 +1,15 @@
-from datetime import date, datetime, time
+from datetime import datetime, time
 
 from domain.entities import (
-    Cita, Cliente, EstadoCita, EstadoPedido, LineaPedido, Pedido,
-    Profesional, Servicio, SlotDisponible,
+    Cita,
+    Cliente,
+    EstadoCita,
+    EstadoPedido,
+    LineaPedido,
+    Pedido,
+    Profesional,
+    Servicio,
+    SlotDisponible,
 )
 
 

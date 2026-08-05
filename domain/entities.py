@@ -6,12 +6,12 @@ cambia de verdad entre negocios (masajes, restaurante, peluquería...).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, date, time
-from enum import Enum
+from datetime import datetime, time
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 
-class EstadoCita(str, Enum):
+class EstadoCita(StrEnum):
     PENDIENTE = "pendiente"
     CONFIRMADA = "confirmada"
     CANCELADA = "cancelada"
@@ -59,7 +59,7 @@ class Cita:
 
     @staticmethod
     def nueva(servicio_id: str, profesional_id: str, cliente_id: str,
-              inicio: datetime, fin: datetime) -> "Cita":
+              inicio: datetime, fin: datetime) -> Cita:
         return Cita(
             id=uuid4(),
             servicio_id=servicio_id,
@@ -78,7 +78,7 @@ class SlotDisponible:
     fin: datetime
 
 
-class EstadoPedido(str, Enum):
+class EstadoPedido(StrEnum):
     RECIBIDO = "recibido"
     EN_PREPARACION = "en_preparacion"
     LISTO = "listo"
@@ -104,5 +104,5 @@ class Pedido:
     creado_en: datetime = field(default_factory=datetime.utcnow)
 
     @staticmethod
-    def nuevo(cliente_id: str, lineas: list[LineaPedido]) -> "Pedido":
+    def nuevo(cliente_id: str, lineas: list[LineaPedido]) -> Pedido:
         return Pedido(id=uuid4(), cliente_id=cliente_id, lineas=lineas)

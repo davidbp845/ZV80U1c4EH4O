@@ -5,13 +5,16 @@ from datetime import date, datetime, time
 
 import pytest
 
-from domain.entities import Cita, Cliente, LineaPedido, Profesional, Servicio
+from domain.entities import Cita, LineaPedido, Profesional, Servicio
 from domain.exceptions import ProfesionalNoDisponible, ServicioNoExiste
 from domain.use_cases import (
-    CancelarReserva, ComprobarDisponibilidad, ConsultarConocimientoNegocio,
-    CrearReserva, RegistrarPedido,
+    _DIAS_SEMANA_ES,
+    CancelarReserva,
+    ComprobarDisponibilidad,
+    ConsultarConocimientoNegocio,
+    CrearReserva,
+    RegistrarPedido,
 )
-from domain.use_cases import _DIAS_SEMANA_ES
 
 
 class FakeRepoServicios:

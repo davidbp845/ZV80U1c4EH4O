@@ -1,43 +1,37 @@
-# Astro Starter Kit: Minimal
+# Frontend cliente — Astro + Preact
 
-```sh
-npm create astro@latest -- --template minimal
+Web pública del negocio (Astro, salida estática) con un chat en
+streaming (isla Preact) conectado al backend Python. Proyecto
+hermano e independiente del backend salvo por las llamadas HTTP del
+chat — ver la sección "Frontend cliente" en `../CLAUDE.md` para el
+detalle de arquitectura (formato de los eventos SSE, convención
+`publicar_web`, vínculo chat↔contenido, etc).
+
+## Puesta en marcha
+
+```bash
+npm install
+cp .env.example .env   # PUBLIC_API_BASE_URL, por defecto http://localhost:8000
+npm run dev             # http://localhost:4321 — necesita el backend arrancado (../main.py)
+npm run build            # genera ./dist, estático
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Estructura
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```
+src/content.config.ts        → content collection que lee ../vault_negocio
+                                (solo notas con publicar_web: true)
+src/lib/negocio.ts           → lee ../config/business.yaml en build-time
+src/components/chat/         → isla Preact: ChatWidget, useChatStream (parseo SSE a mano)
+src/components/ContenidoPublico/ → tarjetas de contenido público del vault
+src/styles/global.css        → tokens Tailwind v4 con escala fluida estilo Utopia.fyi
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Comandos
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+| Comando | Acción |
+| :--- | :--- |
+| `npm run dev` | Servidor de desarrollo en `localhost:4321` |
+| `npm run build` | Build estático de producción en `./dist/` |
+| `npm run preview` | Sirve el build localmente antes de desplegar |
+| `npx astro check` | Type-checking de `.astro`/`.ts`/`.tsx` |

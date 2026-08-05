@@ -5,10 +5,12 @@ externos reales (Anthropic, Chroma) para que el test sea rápido y no
 dependa de red ni de credenciales."""
 from unittest.mock import MagicMock, patch
 
-from application.orchestrator import OrquestadorAgente
 from adapters.out.repositorios_postgres import (
-    RepositorioCitasPostgres, RepositorioClientesPostgres, RepositorioPedidosPostgres,
+    RepositorioCitasPostgres,
+    RepositorioClientesPostgres,
+    RepositorioPedidosPostgres,
 )
+from application.orchestrator import OrquestadorAgente
 
 
 def test_construir_sistema_conecta_las_piezas():

@@ -6,7 +6,8 @@ chromadb."""
 from unittest.mock import MagicMock, patch
 
 from adapters.out.vector_store import (
-    MODELO_EMBEDDINGS_POR_DEFECTO, RepositorioConocimientoChroma,
+    MODELO_EMBEDDINGS_POR_DEFECTO,
+    RepositorioConocimientoChroma,
 )
 
 

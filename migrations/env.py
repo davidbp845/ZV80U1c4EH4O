@@ -1,11 +1,9 @@
 import os
 from logging.config import fileConfig
 
-from dotenv import load_dotenv
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
 
 # Registra las tablas de adapters/out/db_models.py en SQLModel.metadata.
 # Es la misma metadata que usa RepositorioXPostgres/crear_tablas(); si

@@ -11,12 +11,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from datetime import date, datetime
+from datetime import date
 
 from .entities import (
-    Cita, Cliente, Pedido, Profesional, Servicio, SlotDisponible,
+    Cita,
+    Cliente,
+    Pedido,
+    Profesional,
+    Servicio,
 )
-
 
 # ---------- Puertos de salida: persistencia ----------
 

@@ -117,11 +117,11 @@ class EjecutorHerramientas:
                 from domain.entities import LineaPedido
                 lineas = [
                     LineaPedido(
-                        servicio_id=l["servicio_id"],
-                        cantidad=l["cantidad"],
-                        notas=l.get("notas", ""),
+                        servicio_id=linea["servicio_id"],
+                        cantidad=linea["cantidad"],
+                        notas=linea.get("notas", ""),
                     )
-                    for l in entrada["lineas"]
+                    for linea in entrada["lineas"]
                 ]
                 pedido = self._casos["registrar_pedido"].ejecutar(
                     cliente_id=entrada["cliente_id"], lineas=lineas

@@ -7,6 +7,7 @@ que toca saberlo.
 """
 from __future__ import annotations
 
+import logging
 import os
 import threading
 
@@ -24,8 +25,10 @@ from adapters.out.llm_anthropic import ProveedorLLMAnthropic
 from adapters.out.llm_cohere import ProveedorLLMCohere
 from adapters.out.llm_mock import ProveedorLLMMock
 from adapters.out.repositorios_memoria import (
-    RepositorioCitasMemoria, RepositorioClientesMemoria,
-    RepositorioPedidosMemoria, RepositorioProfesionalesMemoria,
+    RepositorioCitasMemoria,
+    RepositorioClientesMemoria,
+    RepositorioPedidosMemoria,
+    RepositorioProfesionalesMemoria,
     RepositorioServiciosMemoria,
 )
 from adapters.out.vector_store import RepositorioConocimientoChroma
@@ -34,9 +37,26 @@ from application.prompts import construir_system_prompt
 from application.tools import EjecutorHerramientas
 from config.loader import cargar_config, construir_profesionales, construir_servicios
 from domain.use_cases import (
-    CancelarReserva, ComprobarDisponibilidad, ConsultarConocimientoNegocio,
-    CrearReserva, RegistrarPedido,
+    CancelarReserva,
+    ComprobarDisponibilidad,
+    ConsultarConocimientoNegocio,
+    CrearReserva,
+    RegistrarPedido,
 )
+
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+# A nivel INFO, las librerías HTTP que usan chromadb/sentence-transformers
+# por debajo (httpx, httpcore, huggingface_hub) registran una línea por
+# cada petición de red al descargar el modelo de embeddings — ruido que
+# tapa los logs de la propia app. Se silencian a WARNING; nuestro logger
+# (más abajo) sigue respetando LOG_LEVEL.
+for _nombre_ruidoso in ("httpx", "httpcore", "urllib3", "huggingface_hub"):
+    logging.getLogger(_nombre_ruidoso).setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 
 def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorAgente:
@@ -54,8 +74,10 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
         # el arranque de la app — evita que varias instancias
         # compitan por crear/alterar tablas a la vez.
         from adapters.out.repositorios_postgres import (
-            RepositorioCitasPostgres, RepositorioClientesPostgres,
-            RepositorioPedidosPostgres, crear_engine,
+            RepositorioCitasPostgres,
+            RepositorioClientesPostgres,
+            RepositorioPedidosPostgres,
+            crear_engine,
         )
         engine = crear_engine(database_url)
         repo_citas = RepositorioCitasPostgres(engine)
@@ -106,16 +128,16 @@ def main():
         daemon=True,
     )
     hilo_web.start()
-    print("Chat web disponible en http://localhost:8000/chat")
+    logger.info("Chat web disponible en http://localhost:8000/chat")
 
     if config.get("canales", {}).get("telegram"):
         token = os.environ.get("TELEGRAM_BOT_TOKEN")
         if token:
             bot = crear_bot(token, orquestador)
-            print("Bot de Telegram iniciado.")
+            logger.info("Bot de Telegram iniciado.")
             bot.run_polling()
         else:
-            print("TELEGRAM_BOT_TOKEN no definido: bot de Telegram no arrancado.")
+            logger.warning("TELEGRAM_BOT_TOKEN no definido: bot de Telegram no arrancado.")
             hilo_web.join()
     else:
         hilo_web.join()
@@ -125,4 +147,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\nApagando...")
+        logger.info("Apagando...")

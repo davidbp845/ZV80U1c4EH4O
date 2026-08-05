@@ -32,7 +32,11 @@ _RESPUESTAS_EJEMPLO = [
         "experiencia en masaje relajante y descontracturante. Trabaja de "
         "lunes a viernes (los viernes solo por la mañana)."
     ),
-    "No he encontrado esa información en la documentación del negocio. ¿Puedes darme más detalles o prefieres que te derive a una persona?",
+    (
+        "No he encontrado esa información en la documentación del "
+        "negocio. ¿Puedes darme más detalles o prefieres que te "
+        "derive a una persona?"
+    ),
 ]
 
 

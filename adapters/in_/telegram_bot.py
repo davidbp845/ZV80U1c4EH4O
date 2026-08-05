@@ -6,7 +6,10 @@ from __future__ import annotations
 
 from telegram import Update
 from telegram.ext import (
-    Application, ContextTypes, MessageHandler, filters,
+    Application,
+    ContextTypes,
+    MessageHandler,
+    filters,
 )
 
 from application.orchestrator import OrquestadorAgente, SesionConversacion

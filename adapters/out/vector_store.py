@@ -10,7 +10,6 @@ from chromadb.utils import embedding_functions
 
 from domain.ports import RepositorioConocimiento
 
-
 # DefaultEmbeddingFunction (all-MiniLM-L6-v2) está entrenado sobre
 # todo en inglés: con contenido y queries en español el ranking
 # semántico es pobre (comprobado: un fragmento con el precio exacto
@@ -59,5 +58,5 @@ class RepositorioConocimientoChroma(RepositorioConocimiento):
         metadatos = (resultado.get("metadatas") or [[]])[0]
         return [
             {"texto": doc, **(meta or {})}
-            for doc, meta in zip(documentos, metadatos)
+            for doc, meta in zip(documentos, metadatos, strict=True)
         ]

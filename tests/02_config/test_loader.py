@@ -1,8 +1,13 @@
 from datetime import time
 from textwrap import dedent
 
+import pytest
+
 from config.loader import (
-    _parse_hora, cargar_config, construir_profesionales, construir_servicios,
+    _parse_hora,
+    cargar_config,
+    construir_profesionales,
+    construir_servicios,
 )
 
 
@@ -24,6 +29,60 @@ def test_cargar_config_lee_yaml(tmp_path):
 
     assert config["nombre"] == "Negocio de prueba"
     assert config["tono"] == "cercano"
+
+
+def test_cargar_config_aplica_valores_por_defecto_a_los_campos_opcionales(tmp_path):
+    ruta = tmp_path / "business.yaml"
+    ruta.write_text(dedent("""
+        nombre: "Negocio de prueba"
+    """))
+
+    config = cargar_config(str(ruta))
+
+    assert config["vault_obsidian"] == "./vault_negocio"
+    assert config["canales"] == {"web": False, "telegram": False}
+    assert config["servicios"] == []
+    assert config["profesionales"] == []
+
+
+def test_cargar_config_sin_nombre_lanza_error_claro(tmp_path):
+    ruta = tmp_path / "business.yaml"
+    ruta.write_text(dedent("""
+        tono: "cercano"
+    """))
+
+    with pytest.raises(ValueError, match="nombre"):
+        cargar_config(str(ruta))
+
+
+def test_cargar_config_servicio_con_campo_que_falta_lanza_error_claro(tmp_path):
+    ruta = tmp_path / "business.yaml"
+    ruta.write_text(dedent("""
+        nombre: "Negocio de prueba"
+        servicios:
+          - id: "s1"
+            nombre: "Masaje"
+            duracion_minutos: 60
+            # falta "precio" (p. ej. un typo como "precios")
+    """))
+
+    with pytest.raises(ValueError, match="servicios.0.precio"):
+        cargar_config(str(ruta))
+
+
+def test_cargar_config_horario_mal_formado_lanza_error_claro(tmp_path):
+    ruta = tmp_path / "business.yaml"
+    ruta.write_text(dedent("""
+        nombre: "Negocio de prueba"
+        profesionales:
+          - id: "ana"
+            nombre: "Ana"
+            horario_semanal:
+              lunes: ["9am", "18:00"]
+    """))
+
+    with pytest.raises(ValueError, match="horario_semanal.lunes"):
+        cargar_config(str(ruta))
 
 
 def test_construir_servicios():
