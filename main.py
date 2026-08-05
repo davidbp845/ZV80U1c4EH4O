@@ -21,6 +21,7 @@ import uvicorn
 from adapters.in_.fastapi_app import crear_router
 from adapters.in_.telegram_bot import crear_bot
 from adapters.out.llm_anthropic import ProveedorLLMAnthropic
+from adapters.out.llm_cohere import ProveedorLLMCohere
 from adapters.out.llm_mock import ProveedorLLMMock
 from adapters.out.repositorios_memoria import (
     RepositorioCitasMemoria, RepositorioClientesMemoria,
@@ -67,8 +68,13 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
 
     conocimiento = RepositorioConocimientoChroma()
 
-    usar_mock_llm = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
-    llm = ProveedorLLMMock() if usar_mock_llm else ProveedorLLMAnthropic()
+    proveedor_llm = os.environ.get("PROVEEDOR_LLM", "anthropic").lower()
+    if proveedor_llm == "mock":
+        llm = ProveedorLLMMock()
+    elif proveedor_llm == "cohere":
+        llm = ProveedorLLMCohere()
+    else:
+        llm = ProveedorLLMAnthropic()
 
     # --- Casos de uso (dominio) ---
     disponibilidad = ComprobarDisponibilidad(repo_servicios, repo_profesionales, repo_citas)

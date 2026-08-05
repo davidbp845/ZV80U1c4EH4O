@@ -49,7 +49,7 @@ def test_construir_sistema_carga_servicios_y_profesionales_del_yaml():
 
 
 def test_construir_sistema_usa_llm_real_por_defecto(monkeypatch):
-    monkeypatch.delenv("USE_MOCK_LLM", raising=False)
+    monkeypatch.delenv("PROVEEDOR_LLM", raising=False)
     with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
          patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
         mock_llm_cls.return_value = MagicMock()
@@ -61,8 +61,8 @@ def test_construir_sistema_usa_llm_real_por_defecto(monkeypatch):
     assert orquestador._llm is mock_llm_cls.return_value
 
 
-def test_construir_sistema_usa_llm_mock_si_use_mock_llm_es_true(monkeypatch):
-    monkeypatch.setenv("USE_MOCK_LLM", "true")
+def test_construir_sistema_usa_llm_mock_si_proveedor_llm_es_mock(monkeypatch):
+    monkeypatch.setenv("PROVEEDOR_LLM", "mock")
     with patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
         mock_chroma_cls.return_value = MagicMock()
 
@@ -73,9 +73,22 @@ def test_construir_sistema_usa_llm_mock_si_use_mock_llm_es_true(monkeypatch):
     assert isinstance(orquestador._llm, ProveedorLLMMock)
 
 
-def test_construir_sistema_usa_llm_real_si_use_mock_llm_es_false(monkeypatch):
-    monkeypatch.setenv("USE_MOCK_LLM", "false")
+def test_construir_sistema_usa_llm_real_si_proveedor_llm_es_anthropic(monkeypatch):
+    monkeypatch.setenv("PROVEEDOR_LLM", "anthropic")
     with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    assert orquestador._llm is mock_llm_cls.return_value
+
+
+def test_construir_sistema_usa_llm_cohere_si_proveedor_llm_es_cohere(monkeypatch):
+    monkeypatch.setenv("PROVEEDOR_LLM", "cohere")
+    with patch("main.ProveedorLLMCohere") as mock_llm_cls, \
          patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
         mock_llm_cls.return_value = MagicMock()
         mock_chroma_cls.return_value = MagicMock()
