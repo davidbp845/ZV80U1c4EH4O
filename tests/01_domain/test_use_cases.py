@@ -86,6 +86,10 @@ class FakeRepoConocimiento:
 
     def buscar(self, consulta, top_k=5):
         self.ultima_consulta = consulta
+        return [r["texto"] for r in self._resultados]
+
+    def buscar_con_fuentes(self, consulta, top_k=5):
+        self.ultima_consulta = consulta
         return self._resultados
 
 
@@ -241,10 +245,27 @@ class TestRegistrarPedido:
 
 class TestConsultarConocimientoNegocio:
     def test_delega_la_busqueda_en_el_puerto(self):
-        conocimiento = FakeRepoConocimiento(resultados=["fragmento 1", "fragmento 2"])
+        conocimiento = FakeRepoConocimiento(resultados=[
+            {"texto": "fragmento 1", "fuente": "horarios.md", "categoria": "horarios", "publicar_web": True},
+            {"texto": "fragmento 2", "fuente": "horarios.md", "categoria": "horarios", "publicar_web": True},
+        ])
         caso = ConsultarConocimientoNegocio(conocimiento)
 
         resultado = caso.ejecutar("¿cuáles son los horarios?")
 
-        assert resultado == ["fragmento 1", "fragmento 2"]
+        assert resultado == {
+            "fragmentos": ["fragmento 1", "fragmento 2"],
+            "fuentes": [{"fuente": "horarios.md", "categoria": "horarios"}],
+        }
         assert conocimiento.ultima_consulta == "¿cuáles son los horarios?"
+
+    def test_no_expone_fuentes_de_notas_no_publicas(self):
+        conocimiento = FakeRepoConocimiento(resultados=[
+            {"texto": "fragmento interno", "fuente": "interno.md", "categoria": "interno", "publicar_web": False},
+        ])
+        caso = ConsultarConocimientoNegocio(conocimiento)
+
+        resultado = caso.ejecutar("consulta interna")
+
+        assert resultado["fragmentos"] == ["fragmento interno"]
+        assert resultado["fuentes"] == []

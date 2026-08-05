@@ -150,5 +150,20 @@ class ConsultarConocimientoNegocio:
     def __init__(self, conocimiento):
         self._conocimiento = conocimiento
 
-    def ejecutar(self, consulta: str) -> list[str]:
-        return self._conocimiento.buscar(consulta)
+    def ejecutar(self, consulta: str) -> dict:
+        resultados = self._conocimiento.buscar_con_fuentes(consulta)
+        fragmentos = [r["texto"] for r in resultados]
+
+        # Las fuentes solo se exponen si la nota de origen está marcada
+        # como pública: el RAG puede seguir usando fragmentos de notas
+        # internas para responder en texto, pero su fichero nunca sale
+        # como "fuente" resaltable si no es publicar_web: true.
+        fuentes = []
+        vistas = set()
+        for r in resultados:
+            fuente = r.get("fuente")
+            if fuente and r.get("publicar_web") is True and fuente not in vistas:
+                vistas.add(fuente)
+                fuentes.append({"fuente": fuente, "categoria": r.get("categoria")})
+
+        return {"fragmentos": fragmentos, "fuentes": fuentes}

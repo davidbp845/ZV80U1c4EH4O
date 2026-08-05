@@ -129,10 +129,9 @@ class EjecutorHerramientas:
                 return {"pedido_id": str(pedido.id), "estado": pedido.estado.value}
 
             if nombre_tool == "consultar_conocimiento_negocio":
-                fragmentos = self._casos["consultar_conocimiento"].ejecutar(
+                return self._casos["consultar_conocimiento"].ejecutar(
                     entrada["consulta"]
                 )
-                return {"fragmentos": fragmentos}
 
             return {"error": f"Herramienta desconocida: {nombre_tool}"}
 

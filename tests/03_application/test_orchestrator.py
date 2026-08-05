@@ -21,6 +21,14 @@ class FakeLLM(ProveedorLLM):
         self.llamadas.append({"mensajes": list(mensajes), "herramientas": herramientas, "system": system})
         return self._respuestas.pop(0)
 
+    def generar_respuesta_stream(self, mensajes, herramientas=None, system=None):
+        self.llamadas.append({"mensajes": list(mensajes), "herramientas": herramientas, "system": system})
+        respuesta = self._respuestas.pop(0)
+        for bloque in respuesta["content"]:
+            if bloque["type"] == "text":
+                yield {"tipo": "delta_texto", "texto": bloque["text"]}
+        yield {"tipo": "final", "content": respuesta["content"]}
+
 
 class FakeEjecutor:
     def __init__(self, resultado=None):
@@ -106,3 +114,62 @@ def test_historial_se_mantiene_entre_llamadas_a_responder():
     roles_y_contenido = [m["content"] for m in sesion.historial if m["role"] == "user"]
     assert roles_y_contenido[0] == "primer mensaje"
     assert roles_y_contenido[1] == "segundo mensaje"
+
+
+def test_stream_responde_con_deltas_y_un_evento_done():
+    llm = FakeLLM([{"content": [_bloque_texto("Hola, ¿en qué puedo ayudarte?")]}])
+    orquestador = OrquestadorAgente(llm=llm, ejecutor_herramientas=FakeEjecutor(), system_prompt="system")
+    sesion = SesionConversacion(canal="web", usuario_id="u1")
+
+    eventos = list(orquestador.responder_stream(sesion, "hola"))
+
+    assert eventos[0] == {"tipo": "delta", "texto": "Hola, ¿en qué puedo ayudarte?"}
+    assert eventos[-1] == {
+        "tipo": "done",
+        "respuesta": "Hola, ¿en qué puedo ayudarte?",
+        "fuentes": [],
+    }
+
+
+def test_stream_ejecuta_tool_y_acumula_fuentes_deduplicadas():
+    llm = FakeLLM([
+        {"content": [_bloque_tool_use("call1", "consultar_conocimiento_negocio", {"consulta": "precios"})]},
+        {"content": [_bloque_texto("El masaje cuesta 55€.")]},
+    ])
+    resultado_tool = {
+        "fragmentos": ["55€"],
+        "fuentes": [
+            {"fuente": "servicios.md", "categoria": "servicios"},
+            {"fuente": "servicios.md", "categoria": "servicios"},
+        ],
+    }
+    ejecutor = FakeEjecutor(resultado=resultado_tool)
+    orquestador = OrquestadorAgente(llm=llm, ejecutor_herramientas=ejecutor, system_prompt="system")
+    sesion = SesionConversacion(canal="web", usuario_id="u1")
+
+    eventos = list(orquestador.responder_stream(sesion, "¿cuánto cuesta el masaje?"))
+
+    evento_done = eventos[-1]
+    assert evento_done["tipo"] == "done"
+    assert evento_done["respuesta"] == "El masaje cuesta 55€."
+    assert evento_done["fuentes"] == [{"fuente": "servicios.md", "categoria": "servicios"}]
+
+
+def test_stream_da_mensaje_de_fallback_tras_agotar_iteraciones():
+    respuestas = [
+        {"content": [_bloque_tool_use(f"call{i}", "comprobar_disponibilidad", {})]}
+        for i in range(4)
+    ]
+    llm = FakeLLM(respuestas)
+    orquestador = OrquestadorAgente(
+        llm=llm, ejecutor_herramientas=FakeEjecutor(), system_prompt="system",
+        max_iteraciones_tool=4,
+    )
+    sesion = SesionConversacion(canal="web", usuario_id="u1")
+
+    eventos = list(orquestador.responder_stream(sesion, "resérvame algo"))
+
+    evento_done = eventos[-1]
+    assert evento_done["tipo"] == "done"
+    assert "no he podido completar" in evento_done["respuesta"]
+    assert len(llm.llamadas) == 4

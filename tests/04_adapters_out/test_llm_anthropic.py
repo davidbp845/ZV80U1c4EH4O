@@ -71,6 +71,58 @@ def test_generar_respuesta_valores_por_defecto_de_system_y_tools():
     assert kwargs["tools"] == []
 
 
+class _DeltaFalso:
+    def __init__(self, type_, **datos):
+        self.type = type_
+        for k, v in datos.items():
+            setattr(self, k, v)
+
+
+class _EventoFalso:
+    def __init__(self, type_, delta=None):
+        self.type = type_
+        self.delta = delta
+
+
+def test_generar_respuesta_stream_emite_deltas_de_texto_y_evento_final():
+    proveedor, mock_client, _ = _proveedor_con_cliente_falso(modelo="claude-x")
+
+    eventos_sdk = [
+        _EventoFalso("content_block_start"),
+        _EventoFalso("content_block_delta", delta=_DeltaFalso("text_delta", text="Hola")),
+        _EventoFalso("content_block_delta", delta=_DeltaFalso("text_delta", text=" mundo")),
+        _EventoFalso("content_block_stop"),
+    ]
+    mensaje_final = MagicMock()
+    mensaje_final.content = [_BloqueFalso("text", text="Hola mundo")]
+
+    mock_stream = MagicMock()
+    mock_stream.__enter__.return_value = mock_stream
+    mock_stream.__exit__.return_value = False
+    mock_stream.__iter__.return_value = iter(eventos_sdk)
+    mock_stream.get_final_message.return_value = mensaje_final
+    mock_client.messages.stream.return_value = mock_stream
+
+    mensajes = [{"role": "user", "content": "hola"}]
+    eventos = list(proveedor.generar_respuesta_stream(mensajes, system="system prompt"))
+
+    mock_client.messages.stream.assert_called_once_with(
+        model="claude-x",
+        max_tokens=1024,
+        system="system prompt",
+        messages=mensajes,
+        tools=[],
+    )
+    assert eventos[:-1] == [
+        {"tipo": "delta_texto", "texto": "Hola"},
+        {"tipo": "delta_texto", "texto": " mundo"},
+    ]
+    assert eventos[-1] == {
+        "tipo": "final",
+        "content": [{"type": "text", "text": "Hola mundo"}],
+    }
+
+
 def test_generar_respuesta_normaliza_bloques_tool_use():
     proveedor, mock_client, _ = _proveedor_con_cliente_falso()
     respuesta_falsa = MagicMock()

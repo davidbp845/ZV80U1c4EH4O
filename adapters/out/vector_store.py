@@ -52,3 +52,12 @@ class RepositorioConocimientoChroma(RepositorioConocimiento):
         resultado = self._coleccion.query(query_texts=[consulta], n_results=top_k)
         documentos = resultado.get("documents", [[]])
         return documentos[0] if documentos else []
+
+    def buscar_con_fuentes(self, consulta: str, top_k: int = 5) -> list[dict]:
+        resultado = self._coleccion.query(query_texts=[consulta], n_results=top_k)
+        documentos = (resultado.get("documents") or [[]])[0]
+        metadatos = (resultado.get("metadatas") or [[]])[0]
+        return [
+            {"texto": doc, **(meta or {})}
+            for doc, meta in zip(documentos, metadatos)
+        ]

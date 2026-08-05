@@ -1,0 +1,11 @@
+---
+import LayoutBase from '../layouts/LayoutBase.astro';
+import Hero from '../components/Hero.astro';
+import GridContenido from '../components/ContenidoPublico/GridContenido.astro';
+import { negocio } from '../lib/negocio';
+---
+
+<LayoutBase titulo={negocio.nombre}>
+  <Hero />
+  <GridContenido />
+</LayoutBase>

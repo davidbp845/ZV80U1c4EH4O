@@ -10,13 +10,23 @@ from fastapi.testclient import TestClient
 
 
 class FakeOrquestador:
-    def __init__(self, respuesta="Hola, ¿en qué puedo ayudarte?"):
+    def __init__(self, respuesta="Hola, ¿en qué puedo ayudarte?", fuentes=None, eventos_stream=None):
         self.respuesta = respuesta
+        self.fuentes = fuentes or []
+        self.eventos_stream = eventos_stream
         self.llamadas = []
 
     def responder(self, sesion, mensaje):
         self.llamadas.append((sesion.usuario_id, mensaje))
         return self.respuesta
+
+    def responder_stream(self, sesion, mensaje):
+        self.llamadas.append((sesion.usuario_id, mensaje))
+        if self.eventos_stream is not None:
+            yield from self.eventos_stream
+            return
+        yield {"tipo": "delta", "texto": self.respuesta}
+        yield {"tipo": "done", "respuesta": self.respuesta, "fuentes": self.fuentes}
 
 
 @pytest.fixture
@@ -66,7 +76,41 @@ def test_chat_valida_payload_incompleto(cliente):
     assert respuesta.status_code == 422
 
 
-@pytest.mark.parametrize("origen", ["http://localhost:5173", "http://localhost:3000"])
+def test_chat_stream_emite_frames_sse_de_delta_fuentes_y_done(cliente):
+    client, orquestador, _ = cliente
+    orquestador.respuesta = "Hola!"
+    orquestador.fuentes = [{"fuente": "servicios.md", "categoria": "servicios"}]
+
+    respuesta = client.post("/chat/stream", json={"usuario_id": "u1", "mensaje": "hola"})
+
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"].startswith("text/event-stream")
+    cuerpo = respuesta.text
+    assert "event: delta" in cuerpo
+    assert '"texto": "Hola!"' in cuerpo
+    assert "event: fuentes" in cuerpo
+    assert "servicios.md" in cuerpo
+    assert "event: done" in cuerpo
+    assert orquestador.llamadas == [("u1", "hola")]
+
+
+def test_chat_stream_emite_evento_error_si_el_orquestador_lanza(cliente):
+    client, orquestador, _ = cliente
+
+    def generador_roto(sesion, mensaje):
+        yield {"tipo": "delta", "texto": "empiezo..."}
+        raise RuntimeError("fallo de LLM")
+
+    orquestador.responder_stream = generador_roto
+
+    respuesta = client.post("/chat/stream", json={"usuario_id": "u1", "mensaje": "hola"})
+
+    assert respuesta.status_code == 200
+    assert "event: error" in respuesta.text
+    assert "fallo de LLM" in respuesta.text
+
+
+@pytest.mark.parametrize("origen", ["http://localhost:5173", "http://localhost:3000", "http://localhost:4321"])
 def test_cors_permite_origenes_de_dev_habituales(cliente, origen):
     client, _, _ = cliente
     respuesta = client.options(

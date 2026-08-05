@@ -10,6 +10,7 @@ sin tocar una sola línea del dominio.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import date, datetime
 
 from .entities import (
@@ -76,6 +77,13 @@ class RepositorioConocimiento(ABC):
     @abstractmethod
     def buscar(self, consulta: str, top_k: int = 5) -> list[str]: ...
 
+    @abstractmethod
+    def buscar_con_fuentes(self, consulta: str, top_k: int = 5) -> list[dict]:
+        """Como buscar(), pero conserva la metadata de cada fragmento
+        (al menos 'fuente': el fichero de origen relativo al vault, y
+        el resto del frontmatter, ej. 'categoria', 'publicar_web')."""
+        ...
+
 
 class ProveedorLLM(ABC):
     """Adaptador hacia el proveedor de modelo (Anthropic, u otro)."""
@@ -88,6 +96,19 @@ class ProveedorLLM(ABC):
         system: str | None = None,
     ) -> dict:
         """Devuelve la respuesta cruda del modelo (texto y/o tool_use)."""
+        ...
+
+    @abstractmethod
+    def generar_respuesta_stream(
+        self,
+        mensajes: list[dict],
+        herramientas: list[dict] | None = None,
+        system: str | None = None,
+    ) -> Iterator[dict]:
+        """Genera eventos incrementales de la respuesta del modelo:
+        {"tipo": "delta_texto", "texto": str} — cero o más, en orden.
+        {"tipo": "final", "content": [...]} — exactamente uno al final,
+        con el mismo shape que generar_respuesta()["content"]."""
         ...
 
 

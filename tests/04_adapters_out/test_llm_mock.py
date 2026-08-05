@@ -76,3 +76,26 @@ def test_hay_al_menos_cuatro_respuestas_variadas():
 def test_sin_mensajes_no_lanza():
     resultado = ProveedorLLMMock().generar_respuesta([])
     assert resultado["content"][0]["type"] == "text"
+
+
+def test_stream_de_texto_concatena_igual_que_generar_respuesta():
+    mock = ProveedorLLMMock()
+    mensajes = [{"role": "user", "content": "hola, ¿qué tal?"}]
+
+    eventos = list(mock.generar_respuesta_stream(mensajes))
+
+    deltas = [e for e in eventos if e["tipo"] == "delta_texto"]
+    evento_final = eventos[-1]
+    assert evento_final["tipo"] == "final"
+    assert "".join(d["texto"] for d in deltas) == evento_final["content"][0]["text"]
+
+
+def test_stream_de_tool_use_no_emite_deltas():
+    mock = ProveedorLLMMock()
+    mensajes = [{"role": "user", "content": "¿tenéis disponibilidad mañana?"}]
+
+    eventos = list(mock.generar_respuesta_stream(mensajes))
+
+    assert len(eventos) == 1
+    assert eventos[0]["tipo"] == "final"
+    assert eventos[0]["content"][0]["type"] == "tool_use"

@@ -1,0 +1,12 @@
+---
+import { negocio } from '../lib/negocio';
+const anio = new Date().getFullYear();
+---
+
+<footer class="border-t border-(--color-borde) py-(--spacing-fluid-s)">
+  <div
+    class="mx-auto max-w-3xl px-(--spacing-fluid-s) text-center text-xs text-(--color-texto-suave)"
+  >
+    © {anio} {negocio.nombre}
+  </div>
+</footer>

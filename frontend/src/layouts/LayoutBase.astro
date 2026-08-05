@@ -1,0 +1,28 @@
+---
+import Cabecera from '../components/Cabecera.astro';
+import Pie from '../components/Pie.astro';
+import '../styles/global.css';
+
+interface Props {
+  titulo: string;
+}
+
+const { titulo } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{titulo}</title>
+  </head>
+  <body class="flex min-h-screen flex-col bg-(--color-fondo) text-(--color-texto)">
+    <Cabecera />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Pie />
+  </body>
+</html>

@@ -97,3 +97,31 @@ def test_buscar_sin_documentos_devuelve_lista_vacia():
     mock_coleccion.query.return_value = {"documents": []}
 
     assert repo.buscar("consulta") == []
+
+
+def test_buscar_con_fuentes_combina_documentos_y_metadatos():
+    repo, _, mock_coleccion, _, _ = _construir_con_mocks()
+    mock_coleccion.query.return_value = {
+        "documents": [["frag1", "frag2"]],
+        "metadatas": [[
+            {"fuente": "a.md", "categoria": "servicios", "publicar_web": True},
+            {"fuente": "b.md", "categoria": "faq", "publicar_web": False},
+        ]],
+    }
+
+    resultado = repo.buscar_con_fuentes("¿cuáles son los precios?", top_k=3)
+
+    mock_coleccion.query.assert_called_once_with(
+        query_texts=["¿cuáles son los precios?"], n_results=3
+    )
+    assert resultado == [
+        {"texto": "frag1", "fuente": "a.md", "categoria": "servicios", "publicar_web": True},
+        {"texto": "frag2", "fuente": "b.md", "categoria": "faq", "publicar_web": False},
+    ]
+
+
+def test_buscar_con_fuentes_sin_resultados_devuelve_lista_vacia():
+    repo, _, mock_coleccion, _, _ = _construir_con_mocks()
+    mock_coleccion.query.return_value = {"documents": [], "metadatas": []}
+
+    assert repo.buscar_con_fuentes("consulta") == []

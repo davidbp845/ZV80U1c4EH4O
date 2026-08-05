@@ -68,6 +68,23 @@ Inbound adapter → `OrquestadorAgente.responder(sesion, mensaje)` → calls the
 
 Example: swapping in-memory repos for Postgres — implement the same interfaces from `domain/ports.py` (`RepositorioCitas`, etc.) in a new `adapters/out/repositorios_postgres.py`, then change the instantiation in `main.py::construir_sistema()`. Domain and application code stay untouched.
 
+## Frontend cliente (`frontend/`)
+
+Proyecto hermano (Astro + Preact + Tailwind v4) a nivel de raíz del repo, independiente del backend Python salvo por las llamadas HTTP del chat. No es parte del paquete `orquestador`; no lo importa ni lo referencia ningún módulo Python.
+
+```bash
+cd frontend
+npm install
+npm run dev     # http://localhost:4321
+npm run build
+```
+
+- **Contenido público**: `frontend/src/content.config.ts` define una content collection (`vault`) que lee `../vault_negocio` directamente (mismo vault que indexa `obsidian_ingest.py` para el RAG) mediante el loader `glob()` de Astro. Una nota se convierte en página/tarjeta pública solo si su frontmatter tiene `publicar_web: true` (por defecto `false` si no está presente) — el resto de frontmatter (`categoria`, `tags`) se pasa tal cual. Cambiar qué se publica es solo editar el frontmatter de la nota, sin tocar código.
+- **Nombre/tono del negocio**: `frontend/src/lib/negocio.ts` lee `config/business.yaml` en build-time (Node, no en el navegador) para no duplicar a mano el nombre del negocio — mismo fichero que usa el backend.
+- **Streaming del chat**: `POST /chat/stream` (además del `POST /chat` no-streaming ya existente, que sigue usando Telegram) devuelve un `text/event-stream` con frames `event: delta` (texto incremental), `event: fuentes` (notas del vault usadas por el RAG en esa respuesta, ya filtradas a solo `publicar_web: true`) y `event: done` (respuesta completa), o `event: error` si algo falla a mitad de stream. La isla de chat (`frontend/src/components/chat/`) parsea esos frames a mano con `fetch` + `ReadableStream` (no `EventSource`, porque este no soporta `POST` con body).
+- **Vínculo chat↔contenido**: al recibir `event: fuentes`, el chat despacha un `CustomEvent('orquestador:fuentes', ...)` en `window`; `GridContenido.astro` lo escucha y resalta la tarjeta cuyo `data-fuente` coincide con el nombre de fichero de la fuente.
+- Para servir el frontend en producción hace falta un `npm run build` + hosting estático de `frontend/dist/`, y que `PUBLIC_API_BASE_URL` (`frontend/.env`) apunte al backend real.
+
 ## Conventions worth knowing
 
 - `ProveedorLLM.generar_respuesta` returns a plain dict (not the Anthropic SDK's response object) — this keeps the orchestrator decoupled from the Anthropic SDK's types, so swapping LLM providers only requires a new adapter matching this same normalized shape.

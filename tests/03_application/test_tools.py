@@ -111,13 +111,13 @@ def test_registrar_pedido_notas_por_defecto():
 
 def test_consultar_conocimiento_negocio():
     caso = Mock()
-    caso.ejecutar.return_value = ["fragmento 1"]
+    caso.ejecutar.return_value = {"fragmentos": ["fragmento 1"], "fuentes": []}
     ejecutor = EjecutorHerramientas({"consultar_conocimiento": caso})
 
     resultado = ejecutor.ejecutar("consultar_conocimiento_negocio", {"consulta": "precios"})
 
     caso.ejecutar.assert_called_once_with("precios")
-    assert resultado == {"fragmentos": ["fragmento 1"]}
+    assert resultado == {"fragmentos": ["fragmento 1"], "fuentes": []}
 
 
 def test_herramienta_desconocida():

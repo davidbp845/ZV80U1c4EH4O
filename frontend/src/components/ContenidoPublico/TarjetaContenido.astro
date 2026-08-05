@@ -1,0 +1,23 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { extraerResumen, extraerTitulo } from '../../lib/resumen';
+
+interface Props {
+  nota: CollectionEntry<'vault'>;
+}
+
+const { nota } = Astro.props;
+const titulo = extraerTitulo(nota.body ?? '', nota.id);
+const resumen = extraerResumen(nota.body ?? '');
+---
+
+<article
+  data-fuente={`${nota.id}.md`}
+  class="rounded-2xl border border-(--color-borde) bg-(--color-superficie) p-(--spacing-fluid-s) transition-colors duration-300 [&.destacado]:border-(--color-acento) [&.destacado]:bg-(--color-acento-suave)"
+>
+  <p class="text-xs font-medium uppercase tracking-wide text-(--color-acento)">
+    {nota.data.categoria}
+  </p>
+  <h3 class="mt-(--spacing-fluid-3xs) text-lg font-semibold text-(--color-texto)">{titulo}</h3>
+  {resumen && <p class="mt-(--spacing-fluid-2xs) text-sm text-(--color-texto-suave)">{resumen}</p>}
+</article>

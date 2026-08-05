@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import random
 import uuid
+from collections.abc import Iterator
 from datetime import date, timedelta
 
 from domain.ports import ProveedorLLM
@@ -56,6 +57,27 @@ class ProveedorLLMMock(ProveedorLLM):
             return {"content": [self._bloque_tool_use_disponibilidad()]}
 
         return {"content": [{"type": "text", "text": random.choice(_RESPUESTAS_EJEMPLO)}]}
+
+    def generar_respuesta_stream(
+        self,
+        mensajes: list[dict],
+        herramientas: list[dict] | None = None,
+        system: str | None = None,
+    ) -> Iterator[dict]:
+        # Reutiliza exactamente las mismas heurísticas que generar_respuesta
+        # para que el mock en streaming y sin streaming nunca diverjan.
+        resultado = self.generar_respuesta(mensajes, herramientas, system)
+        bloque = resultado["content"][0]
+
+        if bloque["type"] == "text":
+            palabras = bloque["text"].split(" ")
+            for i, palabra in enumerate(palabras):
+                texto = palabra if i == len(palabras) - 1 else palabra + " "
+                yield {"tipo": "delta_texto", "texto": texto}
+        # Los tool_use no llevan texto previo: se emiten sin deltas,
+        # igual que suele comportarse el modelo real en estos casos.
+
+        yield {"tipo": "final", "content": resultado["content"]}
 
     @staticmethod
     def _pide_disponibilidad(texto: str) -> bool:
