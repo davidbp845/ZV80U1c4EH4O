@@ -4,6 +4,8 @@ Esqueleto funcional de un orquestador de agentes con arquitectura
 hexagonal (puertos y adaptadores), pensado para negocios "AI-first"
 donde el chat es el producto principal y la web es secundaria.
 
+[Documentación](doc/001-intro.md)
+
 ## Estructura
 
 ```
