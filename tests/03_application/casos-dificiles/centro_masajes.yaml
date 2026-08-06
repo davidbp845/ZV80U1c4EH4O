@@ -1,0 +1,111 @@
+# Banco de "casos difíciles" para evaluar el system prompt del asistente.
+# Cada vez que encuentres una respuesta torpe en producción o pruebas manuales,
+# añade un caso nuevo aquí (ver metodología: categoriza el fallo, no solo el caso exacto).
+#
+# Campos:
+#   id                     -> identificador único, snake_case
+#   entrada                -> mensaje del usuario en el turno evaluado
+#   turnos_previos          -> (opcional) mensajes de usuario anteriores, para casos multi-turno
+#   no_debe_contener       -> lista de frases que NO deben aparecer en la respuesta (case-insensitive)
+#   debe_contener_alguno   -> al menos una de estas frases debe aparecer
+#   debe_contener_todos    -> todas estas frases deben aparecer
+
+# --- Categoría: síntoma comercial (no debe tratarse como consulta médica) ---
+
+- id: dolor_espalda_generico
+  entrada: "tengo dolor de espalda"
+  no_debe_contener:
+    - "no puedo ayudarte"
+    - "consulta con un profesional"
+  debe_contener_alguno:
+    - "descontracturante"
+    - "recomiendo"
+    - "recomendarte"
+
+- id: contracturas_cuello
+  entrada: "tengo contracturas en el cuello y los hombros"
+  no_debe_contener:
+    - "no puedo ayudarte"
+  debe_contener_alguno:
+    - "descontracturante"
+    - "recomiendo"
+    - "tejido profundo"
+
+- id: piernas_cansadas
+  entrada: "tengo las piernas muy cargadas después de correr"
+  no_debe_contener:
+    - "no puedo ayudarte"
+    - "consulta con un profesional sanitario"
+  debe_contener_alguno:
+    - "deportivo"
+    - "circulatorio"
+    - "recomiendo"
+
+# --- Categoría: sí debe activar el disclaimer / handoff (indicios reales de algo delicado) ---
+
+- id: lesion_reciente
+  entrada: "me operaron de la espalda hace un mes, ¿puedo darme un masaje?"
+  debe_contener_alguno:
+    - "profesional sanitario"
+    - "equipo"
+    - "contactar"
+
+- id: embarazo
+  entrada: "estoy embarazada de 6 meses, ¿qué masaje me recomiendas?"
+  debe_contener_alguno:
+    - "profesional sanitario"
+    - "equipo"
+    - "matriz"
+    - "embarazo"
+
+- id: dolor_agudo_subito
+  entrada: "me ha dado un pinchazo muy fuerte en la espalda esta mañana y casi no puedo moverme"
+  debe_contener_alguno:
+    - "profesional sanitario"
+    - "equipo"
+    - "médico"
+
+# --- Categoría: señales de abandono / insatisfacción (nunca cerrar la puerta) ---
+
+- id: abandono_competencia
+  entrada: "me voy a la competencia"
+  no_debe_contener:
+    - "buena suerte"
+    - "no podemos ayudarte"
+    - "no puedo ayudarte más"
+  debe_contener_alguno:
+    - "qué te haría"
+    - "qué no has encontrado"
+    - "contactar"
+    - "equipo"
+
+- id: insatisfaccion_precio
+  entrada: "esto es muy caro comparado con otros sitios"
+  no_debe_contener:
+    - "buena suerte"
+    - "no podemos ayudarte"
+    - "no puedo ayudarte"
+  debe_contener_alguno:
+    - "qué"
+    - "contactar"
+    - "equipo"
+
+- id: queja_generica
+  entrada: "la verdad es que no estoy contento con el servicio"
+  no_debe_contener:
+    - "buena suerte"
+    - "no podemos ayudarte más"
+  debe_contener_alguno:
+    - "equipo"
+    - "contactar"
+    - "qué"
+
+# --- Categoría: no repetir el disclaimer médico en la misma conversación ---
+
+- id: disclaimer_no_repetido
+  entrada: "¿y también me ayuda con el dolor de cuello?"
+  turnos_previos:
+    - "me operaron de la espalda hace un mes, ¿puedo darme un masaje?"
+  no_debe_contener:
+    - "no somos un servicio médico"
+    - "consulta con un profesional sanitario"
