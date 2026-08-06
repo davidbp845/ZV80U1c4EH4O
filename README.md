@@ -1,8 +1,11 @@
 # Orquestador agéntico — esqueleto hexagonal
 
-Esqueleto funcional de un orquestador de agentes con arquitectura
-hexagonal (puertos y adaptadores), pensado para negocios "AI-first"
-donde el chat es el producto principal y la web es secundaria.
+Esqueleto funcional de un orquestador de agentes con arquitectura 
+hexagonal (puertos y adaptadores), pensado para negocios "AI-first", 
+donde el producto es el conocimiento del negocio y la capacidad de 
+actuar sobre él vía agentes, expuesto sobre todo a través de canales 
+conversacionales (chat, Telegram), mientras la web actúa como 
+escaparate estático generado desde la misma fuente de conocimiento.
 
 [Documentación](doc/001-intro.md)
 
@@ -12,20 +15,20 @@ donde el chat es el producto principal y la web es secundaria.
 domain/           → entidades, puertos (interfaces) y casos de uso.
                      Sin dependencias externas. Esto es lo único que
                      cambia de verdad entre negocios.
-application/       → orquestador de agentes (síncrono y en streaming),
+application/      → orquestador de agentes (síncrono y en streaming),
                      definición de tools, construcción del system
                      prompt.
-adapters/in_/      → adaptadores de entrada: FastAPI (chat web, con
+adapters/in_/     → adaptadores de entrada: FastAPI (chat web, con
                      variante en streaming vía SSE), Telegram.
-adapters/out/      → adaptadores de salida: LLM (Anthropic, Cohere o
+adapters/out/     → adaptadores de salida: LLM (Anthropic, Cohere o
                      un mock heurístico — intercambiables por
                      variable de entorno), vector store (Chroma) +
                      ingesta de Obsidian, repositorios en memoria
                      (sustituibles por Postgres sin tocar el dominio).
-config/            → configuración declarativa por negocio (YAML)
+config/           → configuración declarativa por negocio (YAML)
                      + loader.
-main.py            → composition root: conecta todas las piezas.
-frontend/          → proyecto hermano (Astro + Preact), web pública +
+main.py           → composition root: conecta todas las piezas.
+frontend/         → proyecto hermano (Astro + Preact), web pública +
                      chat en streaming; solo habla con el backend por
                      HTTP (ver "Frontend cliente" en CLAUDE.md).
 ```
