@@ -8,6 +8,7 @@ def construir_system_prompt(config_negocio: dict) -> str:
     nombre = config_negocio.get("nombre", "el negocio")
     tono = config_negocio.get("tono", "cercano y profesional")
     instrucciones_extra = config_negocio.get("instrucciones_extra", "")
+    instrucciones_comerciales = config_negocio.get("instrucciones_comerciales", "")
 
     return f"""Eres el asistente virtual de {nombre}.
 
@@ -22,4 +23,6 @@ documentación: si no la encuentras, dilo y ofrece derivar a una
 persona.
 
 {instrucciones_extra}
+
+{instrucciones_comerciales}
 """.strip()

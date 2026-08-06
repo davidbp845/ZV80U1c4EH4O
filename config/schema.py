@@ -46,6 +46,7 @@ class ConfigNegocio(BaseModel):
     nombre: str
     tono: str = "cercano y profesional"
     instrucciones_extra: str = ""
+    instrucciones_comerciales: str = ""
     vault_obsidian: str = "./vault_negocio"
     canales: CanalesConfig = Field(default_factory=CanalesConfig)
     servicios: list[ServicioConfig] = Field(default_factory=list)

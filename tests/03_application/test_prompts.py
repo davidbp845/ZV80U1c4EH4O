@@ -21,6 +21,14 @@ def test_incluye_instrucciones_extra():
     assert "Deriva dolencias graves a un profesional sanitario." in prompt
 
 
+def test_incluye_instrucciones_comerciales():
+    prompt = construir_system_prompt({
+        "nombre": "Centro Serenity",
+        "instrucciones_comerciales": "No te despidas nunca de un cliente insatisfecho.",
+    })
+    assert "No te despidas nunca de un cliente insatisfecho." in prompt
+
+
 def test_prompt_no_tiene_espacios_sobrantes_al_final():
     prompt = construir_system_prompt({"nombre": "X"})
     assert prompt == prompt.strip()
