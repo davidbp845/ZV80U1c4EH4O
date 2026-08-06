@@ -117,15 +117,3 @@ Ejemplo: pasar de repositorios en memoria a Postgres.
    mismas interfaces de `domain/ports.py` (`RepositorioCitas`, etc.)
 2. En `main.py`, cambia la instanciación en `construir_sistema()`.
 3. Nada en `domain/` ni en `application/` se modifica.
-
-## Próximos pasos sugeridos
-
-- Persistir las sesiones de conversación (Redis) en vez de memoria
-  del proceso.
-- Añadir autenticación/roles (propietario, empleado, cliente) para
-  que el agente adapte qué herramientas y qué información expone
-  según quién pregunta.
-- Adaptador de salida para notificaciones (confirmaciones de cita
-  por Telegram/email) implementando `NotificadorMensajes`.
-- Type-checking (`mypy`) — el lint con `ruff`, la CI, la validación
-  de `config/business.yaml` y el logging estructurado ya están.
