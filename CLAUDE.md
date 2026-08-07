@@ -169,10 +169,14 @@ with a summary when done.
 - Run `alembic upgrade head` against a local `DATABASE_URL` (additive schema change,
   not data-destructive).
 
+### Blocked entirely (enforced in `.claude/settings.json`, not even askable in-session)
+- `git push --force` to any remote.
+- `git reset --hard` / `git clean -fd` — even when nothing uncommitted is at risk. If one
+  of these is genuinely the right fix, ask me to run it myself rather than trying to work
+  around the block.
+
 ### Still requires explicit confirmation
-- `git push` (especially `--force`) to any remote, and merging pull requests.
-- Any `git reset --hard` / `git clean -fd` that would discard *uncommitted* work
-  (i.e., work not yet safe in a commit).
+- `git push` (non-force) to any remote, and merging pull requests.
 - Deleting or renaming remote branches, closing or reopening GitHub issues/PRs,
   changing labels/milestones in bulk.
 - Publishing packages (`npm publish`), tagging releases, or anything that touches
