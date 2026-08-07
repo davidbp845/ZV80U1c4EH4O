@@ -143,3 +143,59 @@ it every time.
 If you're unsure whether something is premium and the list doesn't
 make it clear, ask me instead of assuming.
 
+## Autonomous Operation Policy
+
+This project is fully tracked in git. Local, reversible changes can always be undone
+with `git reset --hard` or `git checkout`, so Claude should NOT ask for approval
+before performing the actions listed below. Act autonomously and only report back
+with a summary when done.
+
+### Safe to do without asking (local, reversible via git)
+- Read, search, and analyze any file in the repository.
+- Create, edit, or delete files within the project working tree.
+- Implement new features, refactor code, or fix bugs across any number of files.
+- Run the test suite (`npm test`, `pytest`, etc.) and any linters/formatters/type checkers.
+- Run build commands (`npm run build`, `tsc`, etc.).
+- Install/update dependencies declared in the project (`npm install`, `npm ci`,
+  `pip install -r requirements.txt`) as long as they modify only local
+  lockfiles/manifests already tracked in git.
+- Run arbitrary local npm/yarn/pnpm scripts defined in `package.json`.
+- Create local git branches, `git add`, `git commit`, view `git diff`/`git log`/`git status`,
+  and stash changes.
+- Read GitHub issues and pull requests (`gh issue list/view`, `gh pr list/view/diff`).
+- Create or comment on GitHub issues to report progress or findings.
+- Run scripts/commands that only read data (no external side effects), e.g. hitting a
+  read-only API, querying a local/dev database.
+- Run `alembic upgrade head` against a local `DATABASE_URL` (additive schema change,
+  not data-destructive).
+
+### Still requires explicit confirmation
+- `git push` (especially `--force`) to any remote, and merging pull requests.
+- Any `git reset --hard` / `git clean -fd` that would discard *uncommitted* work
+  (i.e., work not yet safe in a commit).
+- Deleting or renaming remote branches, closing or reopening GitHub issues/PRs,
+  changing labels/milestones in bulk.
+- Publishing packages (`npm publish`), tagging releases, or anything that touches
+  a production/staging environment or deployment pipeline.
+- Modifying CI/CD configuration, secrets, environment variables, or `.env` files
+  containing credentials.
+- Installing global packages or anything that changes the system outside the
+  project directory.
+- Running destructive database migrations (`alembic downgrade`, manual schema/data
+  changes) or any command against a production/shared (non-local) database.
+- Running the test suite or the app in a way that writes to a *local* Postgres
+  `DATABASE_URL` (inserts/updates/deletes citas/clientes/pedidos) — that data isn't
+  tracked in git, so it can't be undone with `git reset --hard`.
+- Running the app (`python main.py`) or any flow that exercises `CrearReserva`/
+  `CancelarReserva` while `GOOGLE_CALENDAR_CREDENTIALS_JSON`/`GOOGLE_CALENDAR_ID`
+  are set — this syncs a real, externally-visible Google Calendar event.
+- Running the app while `TELEGRAM_BOT_TOKEN` is set — this starts live polling
+  and can interact with real Telegram users.
+- Editing this `CLAUDE.md` file itself.
+
+### General principle
+If an action is fully contained inside this git repository and any mistake can be
+undone with `git reset --hard` or by deleting an untracked file, proceed without
+asking. If an action affects anything outside the repo (remote git history, GitHub
+issue/PR state, external services, published artifacts, production systems),
+ask for confirmation first.
