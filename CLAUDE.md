@@ -103,3 +103,43 @@ npm run build
 - Conversation sessions (`SesionConversacion`) live in an in-process dict in both inbound adapters — noted in-code as needing to move to Redis/DB for production multi-process deployments.
 - `EjecutorHerramientas.ejecutar` catches all exceptions and returns `{"error": str(exc)}` rather than raising, so tool failures become a message the LLM can react to instead of crashing the conversation.
 - `main.py` sets up logging via `logging.basicConfig()` and explicitly caps `httpx`/`httpcore`/`urllib3`/`huggingface_hub` at `WARNING` — those libraries (pulled in transitively by `chromadb`/`sentence-transformers`) log one `INFO` line per HTTP request when downloading the embedding model, which drowns out the app's own logs otherwise. If you add a new dependency that turns out to be similarly chatty at `INFO`, silence it the same way rather than dropping `LOG_LEVEL` to `WARNING` globally.
+
+## Open-core vs SaaS Premium boundary
+
+This repo is the OPEN-CORE FUNCTIONAL SKELETON of the agentic
+orchestrator (initial use case: massage center, designed to be
+reusable across businesses). It's genuinely functional, not a toy
+app — but it is NOT the final product. The SaaS version with premium
+functionality lives in a separate private fork.
+
+The skeleton must demonstrate the architecture and be genuinely
+useful for a real small business, but without the capabilities that
+constitute the SaaS's competitive/commercial advantage.
+
+Before implementing any new functionality, check whether it fits the
+"Premium functionality" list (see `002_limites_producto.md` in the
+project context). If it does:
+
+1. Do NOT implement the full logic in this repo.
+2. Explicitly flag it in the response: "This is premium functionality
+   (reserved for the SaaS), I'm not implementing it here in the
+   skeleton."
+3. If it makes sense to keep the hexagonal architecture honest and
+   extensible, offer at most one of these two options (ask which one
+   I prefer before doing either — never decide unilaterally):
+   a) The port/interface in `domain/ports.py`, with no real
+      implementation.
+   b) A "stub" adapter that raises `NotImplementedError` or returns a
+      mock, with an explicit comment:
+      `# PREMIUM: real implementation only in SaaS fork`
+4. Ask whether I want that stub, or would rather the code not be
+   touched at all.
+
+This rule applies EVEN IF I request the functionality directly
+without mentioning it's premium. Checking against the list is
+proactive and your responsibility — it doesn't depend on me labeling
+it every time.
+
+If you're unsure whether something is premium and the list doesn't
+make it clear, ask me instead of assuming.
+
