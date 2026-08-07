@@ -2,15 +2,14 @@ import type { Mensaje } from './useChatStream';
 
 interface Props {
   mensaje: Mensaje;
-  compacto?: boolean;
 }
 
-export default function BurbujaMensaje({ mensaje, compacto = false }: Props) {
+export default function BurbujaMensaje({ mensaje }: Props) {
   const esUsuario = mensaje.rol === 'usuario';
   const esError = mensaje.rol === 'error';
 
   const clases = [
-    'max-w-[80%] whitespace-pre-wrap rounded-2xl px-(--spacing-fluid-xs) py-(--spacing-fluid-2xs) text-sm overflow-hidden transition-[max-height] duration-300 ease-in-out',
+    'max-w-[80%] whitespace-pre-wrap rounded-2xl px-(--spacing-fluid-xs) py-(--spacing-fluid-2xs) text-sm',
     esUsuario
       ? 'bg-(--color-acento) text-white'
       : esError
@@ -20,7 +19,7 @@ export default function BurbujaMensaje({ mensaje, compacto = false }: Props) {
 
   return (
     <div class={`flex ${esUsuario ? 'justify-end' : 'justify-start'}`}>
-      <div class={clases} style={{ maxHeight: compacto ? '1.25rem' : '40rem' }}>
+      <div class={clases}>
         {mensaje.texto || ' '}
       </div>
     </div>
