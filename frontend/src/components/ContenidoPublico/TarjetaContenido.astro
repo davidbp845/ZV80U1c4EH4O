@@ -1,6 +1,9 @@
 ---
 import type { CollectionEntry } from 'astro:content';
-import { extraerResumen, extraerTitulo } from '../../lib/resumen';
+import { render } from 'astro:content';
+import { stat } from 'node:fs/promises';
+import path from 'node:path';
+import { extraerTitulo } from '../../lib/resumen';
 
 interface Props {
   nota: CollectionEntry<'vault'>;
@@ -8,16 +11,121 @@ interface Props {
 
 const { nota } = Astro.props;
 const titulo = extraerTitulo(nota.body ?? '', nota.id);
-const resumen = extraerResumen(nota.body ?? '');
+const resumen = nota.data.resumen;
+const { Content } = await render(nota);
+const idDialogo = `contenido-${nota.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
+// nota.filePath es relativo a la raíz del proyecto Astro (frontend/), no
+// al vault; de ahí el path.resolve contra el cwd del proceso de build.
+const fechaModificacion = nota.filePath
+  ? (await stat(path.resolve(process.cwd(), nota.filePath))).mtime
+  : null;
+const fechaModificacionTexto = fechaModificacion
+  ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
+      fechaModificacion,
+    )
+  : null;
 ---
 
 <article
   data-fuente={`${nota.id}.md`}
-  class="rounded-2xl border border-(--color-borde) bg-(--color-superficie) p-(--spacing-fluid-s) transition-colors duration-300 [&.destacado]:border-(--color-acento) [&.destacado]:bg-(--color-acento-suave)"
+  class="rounded-2xl border border-(--color-borde) bg-(--color-superficie) transition-colors duration-300 [&.destacado]:border-(--color-acento) [&.destacado]:bg-(--color-acento-suave)"
 >
-  <p class="text-xs font-medium uppercase tracking-wide text-(--color-acento)">
-    {nota.data.categoria}
-  </p>
-  <h3 class="mt-(--spacing-fluid-3xs) text-lg font-semibold text-(--color-texto)">{titulo}</h3>
-  {resumen && <p class="mt-(--spacing-fluid-2xs) text-sm text-(--color-texto-suave)">{resumen}</p>}
+  <button
+    type="button"
+    data-abre-dialogo={idDialogo}
+    class="block w-full cursor-pointer appearance-none border-0 bg-transparent p-(--spacing-fluid-s) text-left"
+  >
+    <p class="text-xs font-medium uppercase tracking-wide text-(--color-acento)">
+      {nota.data.categoria}
+    </p>
+    <h3 class="mt-(--spacing-fluid-3xs) text-lg font-semibold text-(--color-texto)">{titulo}</h3>
+    {resumen && <p class="mt-(--spacing-fluid-2xs) text-sm text-(--color-texto-suave)">{resumen}</p>}
+  </button>
 </article>
+
+<dialog
+  id={idDialogo}
+  class="m-auto h-[90vh] w-[90vw] max-w-4xl rounded-2xl border border-(--color-borde) bg-(--color-superficie) p-0 backdrop:bg-black/50"
+>
+  <div class="flex h-full flex-col">
+    <div class="flex items-center justify-between border-b border-(--color-borde) p-(--spacing-fluid-s)">
+      <p class="text-xs font-medium uppercase tracking-wide text-(--color-acento)">
+        {nota.data.categoria}
+      </p>
+      <button
+        type="button"
+        data-cierra-dialogo
+        aria-label="Cerrar"
+        class="rounded-full p-(--spacing-fluid-3xs) text-(--color-texto-suave) transition-colors hover:bg-(--color-acento-suave) hover:text-(--color-acento)"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-(--spacing-fluid-s)">
+      <div class="contenido-nota mx-auto max-w-3xl text-(--color-texto)">
+        <Content />
+      </div>
+    </div>
+    {fechaModificacionTexto && (
+      <div class="border-t border-(--color-borde) p-(--spacing-fluid-s) text-right text-xs text-(--color-texto-suave)">
+        Última actualización: {fechaModificacionTexto}
+      </div>
+    )}
+  </div>
+</dialog>
+
+<style>
+  .contenido-nota :global(h1),
+  .contenido-nota :global(h2),
+  .contenido-nota :global(h3) {
+    margin-top: var(--spacing-fluid-m);
+    margin-bottom: var(--spacing-fluid-2xs);
+    font-weight: 600;
+  }
+  .contenido-nota :global(h1) {
+    margin-top: 0;
+    font-size: var(--text-2xl);
+  }
+  .contenido-nota :global(h2) {
+    font-size: var(--text-lg);
+  }
+  .contenido-nota :global(h3) {
+    font-size: var(--text-base);
+  }
+  .contenido-nota :global(p),
+  .contenido-nota :global(ul),
+  .contenido-nota :global(ol),
+  .contenido-nota :global(table) {
+    margin-top: var(--spacing-fluid-2xs);
+  }
+  .contenido-nota :global(ul),
+  .contenido-nota :global(ol) {
+    padding-left: var(--spacing-fluid-m);
+  }
+  .contenido-nota :global(ul) {
+    list-style: disc;
+  }
+  .contenido-nota :global(ol) {
+    list-style: decimal;
+  }
+  .contenido-nota :global(a) {
+    color: var(--color-acento);
+    text-decoration: underline;
+  }
+  .contenido-nota :global(strong) {
+    font-weight: 600;
+  }
+  .contenido-nota :global(table) {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .contenido-nota :global(th),
+  .contenido-nota :global(td) {
+    border: 1px solid var(--color-borde);
+    padding: var(--spacing-fluid-3xs) var(--spacing-fluid-2xs);
+    text-align: left;
+  }
+</style>

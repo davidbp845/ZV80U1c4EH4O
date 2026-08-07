@@ -2,12 +2,14 @@
 import { getCollection } from 'astro:content';
 import TarjetaContenido from './TarjetaContenido.astro';
 
-const notas = await getCollection('vault', ({ data }) => data.publicar_web === true);
+const notas = (await getCollection('vault', ({ data }) => data.publicar_web === true)).sort(
+  (a, b) => (a.data.orden ?? Infinity) - (b.data.orden ?? Infinity),
+);
 ---
 
-<section id="contenido-publico" class="mx-auto max-w-3xl px-(--spacing-fluid-s) py-(--spacing-fluid-l)">
+<section id="contenido-publico" class="mx-auto max-w-3xl px-(--spacing-fluid-s) py-(--spacing-fluid-l) md:max-w-none md:px-(--spacing-fluid-m)">
   <h2 class="text-xl font-semibold text-(--color-texto)">Información del centro</h2>
-  <div class="mt-(--spacing-fluid-s) grid grid-cols-1 gap-(--spacing-fluid-s) sm:grid-cols-2">
+  <div class="mt-(--spacing-fluid-s) grid grid-cols-1 gap-(--spacing-fluid-s) sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
     {notas.map((nota) => <TarjetaContenido nota={nota} />)}
   </div>
 </section>
@@ -30,5 +32,30 @@ const notas = await getCollection('vault', ({ data }) => data.publicar_web === t
         tarjeta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     });
+  });
+
+  // Lightbox de las tarjetas: cada una trae su propio <dialog> con el
+  // contenido completo de la nota. Un único listener delegado abre/cierra
+  // cualquiera de ellos, en vez de cablear un handler por tarjeta.
+  document.addEventListener('click', (evento) => {
+    const objetivo = evento.target as HTMLElement;
+
+    const disparador = objetivo.closest<HTMLElement>('[data-abre-dialogo]');
+    if (disparador) {
+      const dialogo = document.getElementById(disparador.dataset.abreDialogo ?? '');
+      if (dialogo instanceof HTMLDialogElement) dialogo.showModal();
+      return;
+    }
+
+    const cierre = objetivo.closest<HTMLElement>('[data-cierra-dialogo]');
+    if (cierre) {
+      cierre.closest('dialog')?.close();
+      return;
+    }
+
+    // Clic en el propio <dialog> (el backdrop interior, no su contenido) cierra.
+    if (objetivo instanceof HTMLDialogElement) {
+      objetivo.close();
+    }
   });
 </script>
