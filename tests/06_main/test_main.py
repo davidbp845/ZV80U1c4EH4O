@@ -23,14 +23,14 @@ def test_construir_sistema_conecta_las_piezas():
         orquestador, config = main.construir_sistema("config/business.yaml")
 
     assert isinstance(orquestador, OrquestadorAgente)
-    assert config["nombre"] == "Centro de Masajes Serenity"
+    assert config["nombre"] == "Centro de Masajes Serenidad"
 
     herramientas_esperadas = {
         "comprobar_disponibilidad", "crear_reserva", "cancelar_reserva",
         "registrar_pedido", "consultar_conocimiento",
     }
     assert set(orquestador._ejecutor._casos.keys()) == herramientas_esperadas
-    assert "Centro de Masajes Serenity" in orquestador._system_prompt
+    assert "Centro de Masajes Serenidad" in orquestador._system_prompt
 
 
 def test_construir_sistema_carga_servicios_y_profesionales_del_yaml():

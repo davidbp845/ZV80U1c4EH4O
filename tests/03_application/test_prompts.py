@@ -8,14 +8,14 @@ def test_usa_valores_por_defecto_si_faltan_en_config():
 
 
 def test_incluye_nombre_y_tono_del_negocio():
-    prompt = construir_system_prompt({"nombre": "Centro Serenity", "tono": "formal"})
-    assert "Centro Serenity" in prompt
+    prompt = construir_system_prompt({"nombre": "Centro Serenidad", "tono": "formal"})
+    assert "Centro Serenidad" in prompt
     assert "formal" in prompt
 
 
 def test_incluye_instrucciones_extra():
     prompt = construir_system_prompt({
-        "nombre": "Centro Serenity",
+        "nombre": "Centro Serenidad",
         "instrucciones_extra": "Deriva dolencias graves a un profesional sanitario.",
     })
     assert "Deriva dolencias graves a un profesional sanitario." in prompt
@@ -23,7 +23,7 @@ def test_incluye_instrucciones_extra():
 
 def test_incluye_instrucciones_comerciales():
     prompt = construir_system_prompt({
-        "nombre": "Centro Serenity",
+        "nombre": "Centro Serenidad",
         "instrucciones_comerciales": "No te despidas nunca de un cliente insatisfecho.",
     })
     assert "No te despidas nunca de un cliente insatisfecho." in prompt
