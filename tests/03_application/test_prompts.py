@@ -1,4 +1,6 @@
-from application.prompts import construir_system_prompt
+from datetime import date
+
+from application.prompts import construir_system_prompt, formatear_fecha_es
 
 
 def test_usa_valores_por_defecto_si_faltan_en_config():
@@ -54,3 +56,18 @@ def test_incluye_catalogo_de_servicios_y_profesionales_con_ids_exactos():
 def test_sin_servicios_ni_profesionales_no_incluye_catalogo():
     prompt = construir_system_prompt({"nombre": "Centro Serenidad"})
     assert "Catálogo de servicios" not in prompt
+
+
+def test_formatear_fecha_es_viernes():
+    assert formatear_fecha_es(date(2026, 8, 7)) == "viernes 7 de agosto de 2026"
+
+
+def test_formatear_fecha_es_lunes():
+    assert formatear_fecha_es(date(2026, 8, 10)) == "lunes 10 de agosto de 2026"
+
+
+def test_formatear_fecha_es_no_depende_del_locale_del_sistema():
+    # Fechas con meses/días distintos, para pillar off-by-one en los
+    # índices de _DIAS_SEMANA_ES/_MESES_ES.
+    assert formatear_fecha_es(date(2026, 1, 1)) == "jueves 1 de enero de 2026"
+    assert formatear_fecha_es(date(2026, 12, 31)) == "jueves 31 de diciembre de 2026"

@@ -35,6 +35,12 @@ class ProveedorLLMCohere(ProveedorLLM):
             model=self._modelo,
             messages=self._traducir_historial(mensajes, system),
             tools=self._traducir_herramientas(herramientas) if herramientas else None,
+            # Sin esto, el tool-calling de Cohere es notablemente menos
+            # fiable en un flujo con datos concretos (fechas, ids) —
+            # ver issue #32: mismo mensaje, 3 intentos con temperatura
+            # por defecto dieron 3 resultados distintos (dos fallos, un
+            # éxito); con temperature=0, 4/4 intentos correctos.
+            temperature=0,
         )
         return {"content": self._normalizar_mensaje(respuesta.message)}
 
@@ -48,6 +54,7 @@ class ProveedorLLMCohere(ProveedorLLM):
             model=self._modelo,
             messages=self._traducir_historial(mensajes, system),
             tools=self._traducir_herramientas(herramientas) if herramientas else None,
+            temperature=0,
         )
 
         texto = ""

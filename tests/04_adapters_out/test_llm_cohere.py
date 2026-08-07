@@ -143,6 +143,7 @@ def test_generar_respuesta_normaliza_texto_y_tool_calls():
     assert kwargs["model"] == "command-x"
     assert kwargs["messages"][0] == {"role": "system", "content": "system prompt"}
     assert kwargs["tools"][0]["function"]["name"] == "crear_reserva"
+    assert kwargs["temperature"] == 0
 
 
 def test_generar_respuesta_stream_emite_deltas_y_final_de_texto():
@@ -172,6 +173,8 @@ def test_generar_respuesta_stream_emite_deltas_y_final_de_texto():
         "tipo": "final",
         "content": [{"type": "text", "text": "Hola mundo"}],
     }
+    _, kwargs = mock_cliente.chat_stream.call_args
+    assert kwargs["temperature"] == 0
 
 
 def test_generar_respuesta_stream_acumula_tool_calls_y_emite_final_tool_use():

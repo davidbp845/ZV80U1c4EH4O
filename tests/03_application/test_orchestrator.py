@@ -1,3 +1,6 @@
+from datetime import date
+from unittest.mock import patch
+
 from application.orchestrator import OrquestadorAgente, SesionConversacion
 from domain.ports import ProveedorLLM
 
@@ -49,7 +52,28 @@ def test_responde_directamente_con_texto_si_no_hay_tool_use():
 
     assert respuesta == "Hola, ¿en qué puedo ayudarte?"
     assert sesion.historial[0] == {"role": "user", "content": "hola"}
-    assert llm.llamadas[0]["system"] == "system"
+    assert llm.llamadas[0]["system"].startswith("system")
+    assert "Hoy es" in llm.llamadas[0]["system"]
+
+
+def test_incluye_la_fecha_de_hoy_en_el_system_prompt_y_se_recalcula_cada_turno():
+    llm = FakeLLM([
+        {"content": [_bloque_texto("Respuesta 1")]},
+        {"content": [_bloque_texto("Respuesta 2")]},
+    ])
+    orquestador = OrquestadorAgente(llm=llm, ejecutor_herramientas=FakeEjecutor(), system_prompt="system")
+    sesion = SesionConversacion(canal="web", usuario_id="u1")
+
+    with patch("application.orchestrator.date") as mock_date:
+        mock_date.today.return_value = date(2026, 8, 7)
+        orquestador.responder(sesion, "primer mensaje")
+
+    with patch("application.orchestrator.date") as mock_date:
+        mock_date.today.return_value = date(2026, 8, 10)
+        orquestador.responder(sesion, "segundo mensaje")
+
+    assert "Hoy es viernes 7 de agosto de 2026." in llm.llamadas[0]["system"]
+    assert "Hoy es lunes 10 de agosto de 2026." in llm.llamadas[1]["system"]
 
 
 def test_ejecuta_tool_y_responde_con_el_siguiente_texto():

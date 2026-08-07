@@ -3,6 +3,31 @@ Así el mismo orquestador sirve para cualquier negocio con solo cambiar
 el YAML de configuración (ver config/business.yaml)."""
 from __future__ import annotations
 
+from datetime import date
+
+# Igual que _DIAS_SEMANA_ES en domain/use_cases.py: no usamos
+# fecha.strftime('%A'/'%B') porque depende del locale del sistema
+# operativo y no coincidiría de forma fiable en español.
+_DIAS_SEMANA_ES = [
+    "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo",
+]
+_MESES_ES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+def formatear_fecha_es(fecha: date) -> str:
+    """'viernes 7 de agosto de 2026'. El LLM no tiene ninguna otra forma
+    fiable de saber qué día es "hoy" — sin esto, resuelve fechas
+    relativas ("mañana", "el lunes") adivinando el año/día, lo que
+    puede acabar creando una reserva real en una fecha completamente
+    distinta a la que el cliente pidió."""
+    return (
+        f"{_DIAS_SEMANA_ES[fecha.weekday()]} {fecha.day} de "
+        f"{_MESES_ES[fecha.month - 1]} de {fecha.year}"
+    )
+
 
 def _construir_catalogo(config_negocio: dict) -> str:
     """Las tools de reserva (comprobar_disponibilidad, crear_reserva)

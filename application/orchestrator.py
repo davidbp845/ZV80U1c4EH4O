@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import date
 
 from domain.ports import ProveedorLLM
 
+from .prompts import formatear_fecha_es
 from .tools import TOOLS_SCHEMA, EjecutorHerramientas
 
 _MENSAJE_FALLBACK = (
@@ -41,14 +43,23 @@ class OrquestadorAgente:
         self._system_prompt = system_prompt
         self._max_iteraciones = max_iteraciones_tool
 
+    def _system_prompt_con_fecha(self) -> str:
+        # Calculado en cada turno (no una vez al construir el orquestador):
+        # el proceso puede llevar días corriendo. Sin esto, el LLM no
+        # tiene ninguna forma fiable de saber qué día es "hoy" y adivina
+        # fechas relativas ("mañana", "el lunes") con años/días
+        # incorrectos — ver issue #32.
+        return f"{self._system_prompt}\n\nHoy es {formatear_fecha_es(date.today())}."
+
     def responder(self, sesion: SesionConversacion, mensaje_usuario: str) -> str:
         sesion.historial.append({"role": "user", "content": mensaje_usuario})
+        system = self._system_prompt_con_fecha()
 
         for _ in range(self._max_iteraciones):
             respuesta = self._llm.generar_respuesta(
                 mensajes=sesion.historial,
                 herramientas=TOOLS_SCHEMA,
-                system=self._system_prompt,
+                system=system,
             )
 
             bloques_tool = [b for b in respuesta["content"] if b["type"] == "tool_use"]
@@ -81,6 +92,7 @@ class OrquestadorAgente:
         el turno, con las fuentes RAG usadas (deduplicadas) en todas las
         iteraciones del bucle de herramientas."""
         sesion.historial.append({"role": "user", "content": mensaje_usuario})
+        system = self._system_prompt_con_fecha()
         fuentes_turno: dict[str, dict] = {}
 
         for _ in range(self._max_iteraciones):
@@ -88,7 +100,7 @@ class OrquestadorAgente:
             for evento in self._llm.generar_respuesta_stream(
                 mensajes=sesion.historial,
                 herramientas=TOOLS_SCHEMA,
-                system=self._system_prompt,
+                system=system,
             ):
                 if evento["tipo"] == "delta_texto":
                     yield {"tipo": "delta", "texto": evento["texto"]}
