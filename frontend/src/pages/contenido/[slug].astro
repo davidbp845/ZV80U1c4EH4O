@@ -1,0 +1,51 @@
+---
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import { stat } from 'node:fs/promises';
+import path from 'node:path';
+import LayoutBase from '../../layouts/LayoutBase.astro';
+import { extraerTitulo } from '../../lib/resumen';
+import { negocio } from '../../lib/negocio';
+
+export async function getStaticPaths() {
+  const notas = await getCollection('vault', ({ data }) => data.publicar_web === true);
+  return notas.map((nota) => ({
+    params: { slug: nota.id },
+    props: { nota },
+  }));
+}
+
+interface Props {
+  nota: CollectionEntry<'vault'>;
+}
+
+const { nota } = Astro.props;
+const titulo = extraerTitulo(nota.body ?? '', nota.id);
+const { Content } = await render(nota);
+
+const fechaModificacion = nota.filePath
+  ? (await stat(path.resolve(process.cwd(), nota.filePath))).mtime
+  : null;
+const fechaModificacionTexto = fechaModificacion
+  ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
+      fechaModificacion,
+    )
+  : null;
+---
+
+<LayoutBase titulo={`${titulo} — ${negocio.nombre}`} descripcion={nota.data.resumen ?? titulo}>
+  <article class="mx-auto max-w-3xl px-(--spacing-fluid-s) py-(--spacing-fluid-l)">
+    <a href="/" class="text-sm text-(--color-acento) hover:underline">← Volver a {negocio.nombre}</a>
+    <p class="mt-(--spacing-fluid-m) text-xs font-medium uppercase tracking-wide text-(--color-acento)">
+      {nota.data.categoria}
+    </p>
+    <div class="contenido-nota mt-(--spacing-fluid-2xs) text-(--color-texto)">
+      <Content />
+    </div>
+    {fechaModificacionTexto && (
+      <p class="mt-(--spacing-fluid-l) border-t border-(--color-borde) pt-(--spacing-fluid-s) text-xs text-(--color-texto-suave)">
+        Última actualización: {fechaModificacionTexto}
+      </p>
+    )}
+  </article>
+</LayoutBase>

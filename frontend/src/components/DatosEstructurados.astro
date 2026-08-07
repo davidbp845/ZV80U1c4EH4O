@@ -1,0 +1,49 @@
+---
+import { negocio } from '../lib/negocio';
+
+const precios = (negocio.servicios ?? []).map((s) => s.precio);
+const precioMin = precios.length ? Math.min(...precios) : undefined;
+const precioMax = precios.length ? Math.max(...precios) : undefined;
+const priceRange =
+  precioMin === undefined
+    ? undefined
+    : precioMin === precioMax
+      ? `${precioMin}€`
+      : `${precioMin}€–${precioMax}€`;
+
+// Dirección, teléfono, email y horario no están en config/business.yaml
+// (solo como texto libre en el vault: vault_negocio/ubicacion-contacto.md
+// y vault_negocio/horarios.md) — se transcriben aquí a mano. Si esas notas
+// cambian, hay que actualizar estos valores también.
+const datosEstructurados = {
+  '@context': 'https://schema.org',
+  '@type': 'HealthAndBeautyBusiness',
+  name: negocio.nombre,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'Calle de la Serenidad, 12',
+    addressLocality: 'Madrid',
+    postalCode: '28010',
+    addressCountry: 'ES',
+  },
+  telephone: '+34910000000',
+  email: 'hola@masajesserenity.example',
+  ...(priceRange ? { priceRange } : {}),
+  openingHoursSpecification: [
+    {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      opens: '09:00',
+      closes: '18:00',
+    },
+    {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Friday'],
+      opens: '09:00',
+      closes: '15:00',
+    },
+  ],
+};
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(datosEstructurados)} />

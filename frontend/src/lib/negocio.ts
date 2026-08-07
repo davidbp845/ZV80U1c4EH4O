@@ -12,9 +12,17 @@ import { load } from 'js-yaml';
 // tras el bundling de producción, el chunk final vive en una
 // profundidad de directorios distinta a la del fichero fuente, así
 // que una ruta relativa a import.meta.url se rompe en `astro build`.
+interface ServicioNegocio {
+  id: string;
+  nombre: string;
+  duracion_minutos: number;
+  precio: number;
+}
+
 interface ConfigNegocio {
   nombre: string;
   tono?: string;
+  servicios?: ServicioNegocio[];
 }
 
 const rutaConfig = resolve(process.cwd(), '../config/business.yaml');

@@ -2,10 +2,14 @@
 import LayoutBase from '../layouts/LayoutBase.astro';
 import Hero from '../components/Hero.astro';
 import GridContenido from '../components/ContenidoPublico/GridContenido.astro';
+import DatosEstructurados from '../components/DatosEstructurados.astro';
 import { negocio } from '../lib/negocio';
+
+const descripcion = `${negocio.nombre}, Madrid: masaje relajante y descontracturante. Consulta precios, horarios y reserva online al momento con nuestro asistente.`;
 ---
 
-<LayoutBase titulo={negocio.nombre}>
+<LayoutBase titulo={negocio.nombre} descripcion={descripcion}>
+  <DatosEstructurados slot="head" />
   <Hero />
   <GridContenido />
 </LayoutBase>

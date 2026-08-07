@@ -69,63 +69,11 @@ const fechaModificacionTexto = fechaModificacion
         <Content />
       </div>
     </div>
-    {fechaModificacionTexto && (
-      <div class="border-t border-(--color-borde) p-(--spacing-fluid-s) text-right text-xs text-(--color-texto-suave)">
-        Última actualización: {fechaModificacionTexto}
-      </div>
-    )}
+    <div class="flex items-center justify-between border-t border-(--color-borde) p-(--spacing-fluid-s) text-xs text-(--color-texto-suave)">
+      <a href={`/contenido/${nota.id}/`} class="text-(--color-acento) hover:underline">
+        Ver página completa
+      </a>
+      {fechaModificacionTexto && <span>Última actualización: {fechaModificacionTexto}</span>}
+    </div>
   </div>
 </dialog>
-
-<style>
-  .contenido-nota :global(h1),
-  .contenido-nota :global(h2),
-  .contenido-nota :global(h3) {
-    margin-top: var(--spacing-fluid-m);
-    margin-bottom: var(--spacing-fluid-2xs);
-    font-weight: 600;
-  }
-  .contenido-nota :global(h1) {
-    margin-top: 0;
-    font-size: var(--text-2xl);
-  }
-  .contenido-nota :global(h2) {
-    font-size: var(--text-lg);
-  }
-  .contenido-nota :global(h3) {
-    font-size: var(--text-base);
-  }
-  .contenido-nota :global(p),
-  .contenido-nota :global(ul),
-  .contenido-nota :global(ol),
-  .contenido-nota :global(table) {
-    margin-top: var(--spacing-fluid-2xs);
-  }
-  .contenido-nota :global(ul),
-  .contenido-nota :global(ol) {
-    padding-left: var(--spacing-fluid-m);
-  }
-  .contenido-nota :global(ul) {
-    list-style: disc;
-  }
-  .contenido-nota :global(ol) {
-    list-style: decimal;
-  }
-  .contenido-nota :global(a) {
-    color: var(--color-acento);
-    text-decoration: underline;
-  }
-  .contenido-nota :global(strong) {
-    font-weight: 600;
-  }
-  .contenido-nota :global(table) {
-    border-collapse: collapse;
-    width: 100%;
-  }
-  .contenido-nota :global(th),
-  .contenido-nota :global(td) {
-    border: 1px solid var(--color-borde);
-    padding: var(--spacing-fluid-3xs) var(--spacing-fluid-2xs);
-    text-align: left;
-  }
-</style>

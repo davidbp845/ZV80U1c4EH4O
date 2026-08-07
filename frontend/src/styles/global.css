@@ -45,3 +45,58 @@ body {
   background: var(--color-fondo);
   color: var(--color-texto);
 }
+
+/* Estilos del Markdown renderizado de una nota del vault (sin plugin de
+   tipografía de Tailwind, no está instalado). Compartido entre el
+   lightbox de TarjetaContenido.astro y la página propia de cada nota
+   (pages/contenido/[slug].astro). */
+.contenido-nota h1,
+.contenido-nota h2,
+.contenido-nota h3 {
+  margin-top: var(--spacing-fluid-m);
+  margin-bottom: var(--spacing-fluid-2xs);
+  font-weight: 600;
+}
+.contenido-nota h1 {
+  margin-top: 0;
+  font-size: var(--text-2xl);
+}
+.contenido-nota h2 {
+  font-size: var(--text-lg);
+}
+.contenido-nota h3 {
+  font-size: var(--text-base);
+}
+.contenido-nota p,
+.contenido-nota ul,
+.contenido-nota ol,
+.contenido-nota table {
+  margin-top: var(--spacing-fluid-2xs);
+}
+.contenido-nota ul,
+.contenido-nota ol {
+  padding-left: var(--spacing-fluid-m);
+}
+.contenido-nota ul {
+  list-style: disc;
+}
+.contenido-nota ol {
+  list-style: decimal;
+}
+.contenido-nota a {
+  color: var(--color-acento);
+  text-decoration: underline;
+}
+.contenido-nota strong {
+  font-weight: 600;
+}
+.contenido-nota table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.contenido-nota th,
+.contenido-nota td {
+  border: 1px solid var(--color-borde);
+  padding: var(--spacing-fluid-3xs) var(--spacing-fluid-2xs);
+  text-align: left;
+}
