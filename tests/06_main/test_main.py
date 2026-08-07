@@ -134,3 +134,43 @@ def test_construir_sistema_usa_repos_postgres_si_hay_database_url(monkeypatch):
     assert isinstance(crear_reserva._clientes, RepositorioClientesPostgres)
     assert isinstance(cancelar_reserva._citas, RepositorioCitasPostgres)
     assert isinstance(registrar_pedido._pedidos, RepositorioPedidosPostgres)
+
+
+def test_construir_sistema_sin_calendario_configurado(monkeypatch):
+    monkeypatch.delenv("GOOGLE_CALENDAR_CREDENTIALS_JSON", raising=False)
+    monkeypatch.delenv("GOOGLE_CALENDAR_ID", raising=False)
+    with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    crear_reserva = orquestador._ejecutor._casos["crear_reserva"]
+    cancelar_reserva = orquestador._ejecutor._casos["cancelar_reserva"]
+    assert crear_reserva._calendario is None
+    assert cancelar_reserva._calendario is None
+
+
+def test_construir_sistema_usa_google_calendar_si_hay_credenciales(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CALENDAR_CREDENTIALS_JSON", "/ruta/falsa/credenciales.json")
+    monkeypatch.setenv("GOOGLE_CALENDAR_ID", "negocio@group.calendar.google.com")
+    with patch("main.ProveedorLLMAnthropic") as mock_llm_cls, \
+         patch("main.RepositorioConocimientoChroma") as mock_chroma_cls, \
+         patch("adapters.out.calendario_google.SincronizadorCalendarioGoogle") as mock_calendario_cls:
+        mock_llm_cls.return_value = MagicMock()
+        mock_chroma_cls.return_value = MagicMock()
+        mock_calendario_cls.return_value = MagicMock()
+
+        import main
+        orquestador, _ = main.construir_sistema("config/business.yaml")
+
+    crear_reserva = orquestador._ejecutor._casos["crear_reserva"]
+    cancelar_reserva = orquestador._ejecutor._casos["cancelar_reserva"]
+
+    mock_calendario_cls.assert_called_once_with(
+        "/ruta/falsa/credenciales.json", "negocio@group.calendar.google.com", "Europe/Madrid"
+    )
+    assert crear_reserva._calendario is mock_calendario_cls.return_value
+    assert cancelar_reserva._calendario is mock_calendario_cls.return_value

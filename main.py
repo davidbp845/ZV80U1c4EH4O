@@ -90,6 +90,17 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
 
     conocimiento = RepositorioConocimientoChroma()
 
+    credenciales_calendario = os.environ.get("GOOGLE_CALENDAR_CREDENTIALS_JSON")
+    calendar_id = os.environ.get("GOOGLE_CALENDAR_ID")
+    if credenciales_calendario and calendar_id:
+        from adapters.out.calendario_google import SincronizadorCalendarioGoogle
+        zona_horaria_calendario = os.environ.get("GOOGLE_CALENDAR_TIMEZONE", "Europe/Madrid")
+        calendario = SincronizadorCalendarioGoogle(
+            credenciales_calendario, calendar_id, zona_horaria_calendario
+        )
+    else:
+        calendario = None
+
     proveedor_llm = os.environ.get("PROVEEDOR_LLM", "anthropic").lower()
     if proveedor_llm == "mock":
         llm = ProveedorLLMMock()
@@ -100,8 +111,11 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
 
     # --- Casos de uso (dominio) ---
     disponibilidad = ComprobarDisponibilidad(repo_servicios, repo_profesionales, repo_citas)
-    crear_reserva = CrearReserva(repo_servicios, repo_citas, repo_clientes, disponibilidad)
-    cancelar_reserva = CancelarReserva(repo_citas)
+    crear_reserva = CrearReserva(
+        repo_servicios, repo_profesionales, repo_citas, repo_clientes,
+        disponibilidad, calendario,
+    )
+    cancelar_reserva = CancelarReserva(repo_citas, calendario)
     registrar_pedido = RegistrarPedido(repo_pedidos, repo_servicios)
     consultar_conocimiento = ConsultarConocimientoNegocio(conocimiento)
 

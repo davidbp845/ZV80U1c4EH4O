@@ -30,6 +30,7 @@ class CitaDB(SQLModel, table=True):
     inicio: datetime
     fin: datetime
     estado: str
+    evento_calendario_id: str | None = None
 
 
 class PedidoDB(SQLModel, table=True):

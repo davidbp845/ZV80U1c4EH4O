@@ -47,6 +47,9 @@ class RepositorioCitasMemoria(RepositorioCitas):
     def guardar(self, cita: Cita) -> None:
         self._data[cita.id] = cita
 
+    def obtener(self, cita_id) -> Cita | None:
+        return self._data.get(cita_id)
+
     def citas_de_profesional_en_fecha(self, profesional_id: str, dia: date) -> list[Cita]:
         return [
             c for c in self._data.values()

@@ -16,6 +16,7 @@ __pycache__/
 .env
 !.env.example
 *.key
+credentials/
 
 # Datos generados en runtime — no son código, se regeneran
 chroma_data/

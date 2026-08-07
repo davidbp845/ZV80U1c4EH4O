@@ -60,6 +60,15 @@ def test_repositorio_citas_cancelar_id_inexistente_no_lanza():
     repo.cancelar("no_existe")  # no debe lanzar
 
 
+def test_repositorio_citas_obtener():
+    repo = RepositorioCitasMemoria()
+    cita = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
+    repo.guardar(cita)
+
+    assert repo.obtener(cita.id) is cita
+    assert repo.obtener("no_existe") is None
+
+
 def test_repositorio_clientes():
     repo = RepositorioClientesMemoria()
     cliente = Cliente(id="c1", nombre="Juan", telefono="600111222")

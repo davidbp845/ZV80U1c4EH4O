@@ -32,3 +32,25 @@ def test_incluye_instrucciones_comerciales():
 def test_prompt_no_tiene_espacios_sobrantes_al_final():
     prompt = construir_system_prompt({"nombre": "X"})
     assert prompt == prompt.strip()
+
+
+def test_incluye_catalogo_de_servicios_y_profesionales_con_ids_exactos():
+    prompt = construir_system_prompt({
+        "nombre": "Centro Serenidad",
+        "servicios": [
+            {"id": "masaje_relajante_60", "nombre": "Masaje relajante 60 min",
+             "duracion_minutos": 60, "precio": 55.0},
+        ],
+        "profesionales": [
+            {"id": "ana", "nombre": "Ana García", "servicios_ids": ["masaje_relajante_60"]},
+        ],
+    })
+    assert "masaje_relajante_60" in prompt
+    assert "Masaje relajante 60 min" in prompt
+    assert "ana" in prompt
+    assert "Ana García" in prompt
+
+
+def test_sin_servicios_ni_profesionales_no_incluye_catalogo():
+    prompt = construir_system_prompt({"nombre": "Centro Serenidad"})
+    assert "Catálogo de servicios" not in prompt

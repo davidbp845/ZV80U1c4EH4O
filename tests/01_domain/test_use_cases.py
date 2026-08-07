@@ -17,6 +17,26 @@ from domain.use_cases import (
 )
 
 
+class FakeSincronizadorCalendario:
+    def __init__(self, id_evento="evento-externo-1", lanza_en_crear=False, lanza_en_cancelar=False):
+        self._id_evento = id_evento
+        self._lanza_en_crear = lanza_en_crear
+        self._lanza_en_cancelar = lanza_en_cancelar
+        self.eventos_creados = []
+        self.eventos_cancelados = []
+
+    def crear_evento(self, cita, servicio, profesional):
+        if self._lanza_en_crear:
+            raise RuntimeError("fallo simulado de Google Calendar")
+        self.eventos_creados.append((cita, servicio, profesional))
+        return self._id_evento
+
+    def cancelar_evento(self, evento_id):
+        if self._lanza_en_cancelar:
+            raise RuntimeError("fallo simulado de Google Calendar")
+        self.eventos_cancelados.append(evento_id)
+
+
 class FakeRepoServicios:
     def __init__(self, servicios=None):
         self._data = {s.id: s for s in (servicios or [])}
@@ -46,6 +66,9 @@ class FakeRepoCitas:
 
     def guardar(self, cita):
         self._data[cita.id] = cita
+
+    def obtener(self, cita_id):
+        return self._data.get(cita_id)
 
     def citas_de_profesional_en_fecha(self, profesional_id, dia):
         return [
@@ -173,14 +196,18 @@ class TestComprobarDisponibilidad:
 
 
 class TestCrearReserva:
-    def _construir(self, citas=None):
+    def _construir(self, citas=None, calendario=None):
         repo_servicios = FakeRepoServicios([_servicio(duracion=30)])
+        repo_profesionales = FakeRepoProfesionales([_profesional()])
         repo_citas = FakeRepoCitas(citas)
         repo_clientes = FakeRepoClientes()
         disponibilidad = ComprobarDisponibilidad(
-            repo_servicios, FakeRepoProfesionales([_profesional()]), repo_citas
+            repo_servicios, repo_profesionales, repo_citas
         )
-        caso = CrearReserva(repo_servicios, repo_citas, repo_clientes, disponibilidad)
+        caso = CrearReserva(
+            repo_servicios, repo_profesionales, repo_citas, repo_clientes,
+            disponibilidad, calendario,
+        )
         return caso, repo_citas
 
     def test_lanza_si_servicio_no_existe(self):
@@ -215,6 +242,31 @@ class TestCrearReserva:
         with pytest.raises(ProfesionalNoDisponible):
             caso.ejecutar("masaje", "ana", "cliente1", datetime.combine(_LUNES, time(9, 0)))
 
+    def test_sincroniza_con_el_calendario_si_esta_configurado(self):
+        calendario = FakeSincronizadorCalendario(id_evento="evento-abc")
+        caso, _ = self._construir(calendario=calendario)
+        inicio = datetime.combine(_LUNES, time(9, 0))
+
+        cita = caso.ejecutar("masaje", "ana", "cliente1", inicio)
+
+        assert cita.evento_calendario_id == "evento-abc"
+        assert len(calendario.eventos_creados) == 1
+
+    def test_no_falla_si_el_calendario_lanza_excepcion(self):
+        calendario = FakeSincronizadorCalendario(lanza_en_crear=True)
+        caso, repo_citas = self._construir(calendario=calendario)
+        inicio = datetime.combine(_LUNES, time(9, 0))
+
+        cita = caso.ejecutar("masaje", "ana", "cliente1", inicio)
+
+        assert cita.evento_calendario_id is None
+        assert repo_citas._data[cita.id] is cita
+
+    def test_sin_calendario_configurado_no_intenta_sincronizar(self):
+        caso, _ = self._construir(calendario=None)
+        cita = caso.ejecutar("masaje", "ana", "cliente1", datetime.combine(_LUNES, time(9, 0)))
+        assert cita.evento_calendario_id is None
+
 
 class TestCancelarReserva:
     def test_delega_en_el_repositorio(self):
@@ -222,6 +274,46 @@ class TestCancelarReserva:
         caso = CancelarReserva(repo_citas)
         caso.ejecutar("cita-123")
         assert repo_citas.canceladas == ["cita-123"]
+
+    def test_cancela_el_evento_de_calendario_si_la_cita_tiene_uno(self):
+        cita = Cita.nueva(
+            "masaje", "ana", "cliente1",
+            datetime.combine(_LUNES, time(9, 0)), datetime.combine(_LUNES, time(9, 30)),
+        )
+        cita.evento_calendario_id = "evento-abc"
+        repo_citas = FakeRepoCitas([cita])
+        calendario = FakeSincronizadorCalendario()
+
+        caso = CancelarReserva(repo_citas, calendario)
+        caso.ejecutar(cita.id)
+
+        assert calendario.eventos_cancelados == ["evento-abc"]
+        assert repo_citas.canceladas == [cita.id]
+
+    def test_no_cancela_evento_si_la_cita_no_tiene_evento_calendario(self):
+        cita = Cita.nueva(
+            "masaje", "ana", "cliente1",
+            datetime.combine(_LUNES, time(9, 0)), datetime.combine(_LUNES, time(9, 30)),
+        )
+        repo_citas = FakeRepoCitas([cita])
+        calendario = FakeSincronizadorCalendario()
+
+        CancelarReserva(repo_citas, calendario).ejecutar(cita.id)
+
+        assert calendario.eventos_cancelados == []
+
+    def test_no_falla_si_cancelar_evento_de_calendario_lanza_excepcion(self):
+        cita = Cita.nueva(
+            "masaje", "ana", "cliente1",
+            datetime.combine(_LUNES, time(9, 0)), datetime.combine(_LUNES, time(9, 30)),
+        )
+        cita.evento_calendario_id = "evento-abc"
+        repo_citas = FakeRepoCitas([cita])
+        calendario = FakeSincronizadorCalendario(lanza_en_cancelar=True)
+
+        CancelarReserva(repo_citas, calendario).ejecutar(cita.id)
+
+        assert repo_citas.canceladas == [cita.id]
 
 
 class TestRegistrarPedido:

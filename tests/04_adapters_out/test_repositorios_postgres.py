@@ -53,6 +53,19 @@ def test_citas_cancelar_id_inexistente_no_lanza():
     repo.cancelar(None)  # no debe lanzar
 
 
+def test_citas_obtener():
+    repo = RepositorioCitasPostgres(_engine())
+    cita = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
+    cita.evento_calendario_id = "evento-abc"
+    repo.guardar(cita)
+
+    resultado = repo.obtener(cita.id)
+
+    assert resultado.id == cita.id
+    assert resultado.evento_calendario_id == "evento-abc"
+    assert repo.obtener("no_existe") is None
+
+
 def test_clientes():
     repo = RepositorioClientesPostgres(_engine())
     cliente = Cliente(id="c1", nombre="Juan", telefono="600111222")

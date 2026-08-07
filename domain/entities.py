@@ -56,6 +56,7 @@ class Cita:
     inicio: datetime
     fin: datetime
     estado: EstadoCita = EstadoCita.PENDIENTE
+    evento_calendario_id: str | None = None
 
     @staticmethod
     def nueva(servicio_id: str, profesional_id: str, cliente_id: str,

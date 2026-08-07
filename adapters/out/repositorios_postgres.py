@@ -63,8 +63,17 @@ class RepositorioCitasPostgres(RepositorioCitas):
                 inicio=cita.inicio,
                 fin=cita.fin,
                 estado=cita.estado.value,
+                evento_calendario_id=cita.evento_calendario_id,
             ))
             sesion.commit()
+
+    def obtener(self, cita_id) -> Cita | None:
+        cita_id = _como_uuid(cita_id)
+        if cita_id is None:
+            return None
+        with Session(self._engine) as sesion:
+            fila = sesion.get(CitaDB, cita_id)
+            return self._a_entidad(fila) if fila else None
 
     def citas_de_profesional_en_fecha(self, profesional_id: str, dia: date) -> list[Cita]:
         with Session(self._engine) as sesion:
@@ -94,6 +103,7 @@ class RepositorioCitasPostgres(RepositorioCitas):
             inicio=fila.inicio,
             fin=fila.fin,
             estado=EstadoCita(fila.estado),
+            evento_calendario_id=fila.evento_calendario_id,
         )
 
 

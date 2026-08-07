@@ -44,6 +44,9 @@ class RepositorioCitas(ABC):
     def guardar(self, cita: Cita) -> None: ...
 
     @abstractmethod
+    def obtener(self, cita_id) -> Cita | None: ...
+
+    @abstractmethod
     def citas_de_profesional_en_fecha(
         self, profesional_id: str, dia: date
     ) -> list[Cita]: ...
@@ -122,3 +125,22 @@ class NotificadorMensajes(ABC):
 
     @abstractmethod
     def enviar(self, destinatario_id: str, texto: str) -> None: ...
+
+
+# ---------- Puertos de salida: calendario ----------
+
+class SincronizadorCalendario(ABC):
+    """Refleja las citas del sistema en un calendario externo (Google
+    Calendar u otro). Los casos de uso lo tratan como best-effort: un
+    fallo aquí no debe impedir crear/cancelar una cita en el dominio."""
+
+    @abstractmethod
+    def crear_evento(
+        self, cita: Cita, servicio: Servicio, profesional: Profesional
+    ) -> str:
+        """Crea el evento en el calendario externo y devuelve su id,
+        para poder cancelarlo más tarde."""
+        ...
+
+    @abstractmethod
+    def cancelar_evento(self, evento_id: str) -> None: ...

@@ -5,6 +5,7 @@ invocar como "herramientas" (tools) del LLM.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 
 from .entities import (
@@ -20,7 +21,10 @@ from .ports import (
     RepositorioPedidos,
     RepositorioProfesionales,
     RepositorioServicios,
+    SincronizadorCalendario,
 )
+
+logger = logging.getLogger(__name__)
 
 # date.weekday(): 0=lunes ... 6=domingo. No usamos strftime('%A') porque
 # depende del locale del sistema operativo y nunca coincidiría de forma
@@ -92,14 +96,18 @@ class CrearReserva:
     def __init__(
         self,
         servicios: RepositorioServicios,
+        profesionales: RepositorioProfesionales,
         citas: RepositorioCitas,
         clientes: RepositorioClientes,
         disponibilidad: ComprobarDisponibilidad,
+        calendario: SincronizadorCalendario | None = None,
     ):
         self._servicios = servicios
+        self._profesionales = profesionales
         self._citas = citas
         self._clientes = clientes
         self._disponibilidad = disponibilidad
+        self._calendario = calendario
 
     def ejecutar(
         self,
@@ -122,15 +130,47 @@ class CrearReserva:
             raise ProfesionalNoDisponible(profesional_id, inicio)
 
         cita = Cita.nueva(servicio_id, profesional_id, cliente_id, inicio, fin)
+
+        if self._calendario is not None:
+            # Best-effort: un fallo al sincronizar con el calendario externo
+            # no debe impedir crear la reserva en el sistema.
+            try:
+                profesional = self._profesionales.obtener(profesional_id)
+                cita.evento_calendario_id = self._calendario.crear_evento(
+                    cita, servicio, profesional
+                )
+            except Exception:
+                logger.exception(
+                    "No se pudo sincronizar la cita %s con el calendario externo",
+                    cita.id,
+                )
+
         self._citas.guardar(cita)
         return cita
 
 
 class CancelarReserva:
-    def __init__(self, citas: RepositorioCitas):
+    def __init__(
+        self,
+        citas: RepositorioCitas,
+        calendario: SincronizadorCalendario | None = None,
+    ):
         self._citas = citas
+        self._calendario = calendario
 
     def ejecutar(self, cita_id) -> None:
+        if self._calendario is not None:
+            cita = self._citas.obtener(cita_id)
+            if cita is not None and cita.evento_calendario_id:
+                try:
+                    self._calendario.cancelar_evento(cita.evento_calendario_id)
+                except Exception:
+                    logger.exception(
+                        "No se pudo cancelar en el calendario externo el "
+                        "evento de la cita %s",
+                        cita_id,
+                    )
+
         self._citas.cancelar(cita_id)
 
 
