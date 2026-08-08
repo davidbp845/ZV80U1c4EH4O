@@ -174,3 +174,25 @@ def test_construir_sistema_usa_google_calendar_si_hay_credenciales(monkeypatch):
     )
     assert crear_reserva._calendario is mock_calendario_cls.return_value
     assert cancelar_reserva._calendario is mock_calendario_cls.return_value
+
+
+def test_construir_repositorio_sesiones_usa_memoria_sin_redis_url(monkeypatch):
+    monkeypatch.delenv("REDIS_URL", raising=False)
+
+    import main
+    from adapters.out.repositorio_sesiones_memoria import RepositorioSesionesMemoria
+
+    assert isinstance(main.construir_repositorio_sesiones(), RepositorioSesionesMemoria)
+
+
+def test_construir_repositorio_sesiones_usa_redis_si_hay_redis_url(monkeypatch):
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
+    with patch("adapters.out.repositorio_sesiones_redis.Redis") as mock_redis_cls:
+        mock_redis_cls.from_url.return_value = MagicMock()
+
+        import main
+        from adapters.out.repositorio_sesiones_redis import RepositorioSesionesRedis
+
+        repo = main.construir_repositorio_sesiones()
+
+    assert isinstance(repo, RepositorioSesionesRedis)

@@ -1,12 +1,15 @@
-"""adapters/in_/fastapi_app.py define `app` y `_sesiones` a nivel de
-módulo, y crear_router() añade rutas sobre ese mismo `app` cada vez
-que se llama. Para que cada test tenga rutas y sesiones limpias (y no
-dependa del orden de ejecución), recargamos el módulo en cada test en
-lugar de reutilizar la instancia compartida."""
+"""adapters/in_/fastapi_app.py define `app` a nivel de módulo, y
+crear_router() añade rutas sobre ese mismo `app` cada vez que se
+llama. Para que cada test tenga rutas limpias (y no dependa del orden
+de ejecución), recargamos el módulo en cada test en lugar de
+reutilizar la instancia compartida. Las sesiones ya no viven en el
+módulo (ver #18) — cada test crea su propio RepositorioSesionesMemoria."""
 import importlib
 
 import pytest
 from fastapi.testclient import TestClient
+
+from adapters.out.repositorio_sesiones_memoria import RepositorioSesionesMemoria
 
 
 class FakeOrquestador:
@@ -39,8 +42,9 @@ def modulo():
 @pytest.fixture
 def cliente(modulo):
     orquestador = FakeOrquestador()
-    app = modulo.crear_router(orquestador)
-    return TestClient(app), orquestador, modulo
+    repositorio_sesiones = RepositorioSesionesMemoria()
+    app = modulo.crear_router(orquestador, repositorio_sesiones)
+    return TestClient(app), orquestador, repositorio_sesiones
 
 
 def test_health(cliente):
@@ -60,12 +64,13 @@ def test_chat_devuelve_la_respuesta_del_orquestador(cliente):
 
 
 def test_chat_reutiliza_la_sesion_del_mismo_usuario(cliente):
-    client, orquestador, modulo = cliente
+    client, orquestador, repositorio_sesiones = cliente
 
     client.post("/chat", json={"usuario_id": "u2", "mensaje": "primero"})
     client.post("/chat", json={"usuario_id": "u2", "mensaje": "segundo"})
 
-    sesion = modulo._sesiones["u2"]
+    sesion = repositorio_sesiones.obtener("web", "u2")
+    assert sesion is not None
     assert sesion.canal == "web"
     assert [m for _, m in orquestador.llamadas] == ["primero", "segundo"]
 
@@ -108,6 +113,20 @@ def test_chat_stream_emite_evento_error_si_el_orquestador_lanza(cliente):
     assert respuesta.status_code == 200
     assert "event: error" in respuesta.text
     assert "fallo de LLM" in respuesta.text
+
+
+def test_chat_stream_persiste_la_sesion_incluso_si_el_orquestador_lanza(cliente):
+    client, orquestador, repositorio_sesiones = cliente
+
+    def generador_roto(sesion, mensaje):
+        yield {"tipo": "delta", "texto": "empiezo..."}
+        raise RuntimeError("fallo de LLM")
+
+    orquestador.responder_stream = generador_roto
+
+    client.post("/chat/stream", json={"usuario_id": "u4", "mensaje": "hola"})
+
+    assert repositorio_sesiones.obtener("web", "u4") is not None
 
 
 @pytest.mark.parametrize("origen", ["http://localhost:5173", "http://localhost:3000", "http://localhost:4321"])

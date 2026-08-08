@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from application.orchestrator import OrquestadorAgente, SesionConversacion
+from application.ports import RepositorioSesiones
 
 app = FastAPI(title="Orquestador agéntico — chat web")
 
@@ -31,11 +32,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# En producción, las sesiones deberían persistirse (Redis, DB) en vez
-# de vivir en memoria del proceso.
-_sesiones: dict[str, SesionConversacion] = {}
-
-
 class MensajeEntrante(BaseModel):
     usuario_id: str
     mensaje: str
@@ -45,22 +41,22 @@ class RespuestaAgente(BaseModel):
     respuesta: str
 
 
-def crear_router(orquestador: OrquestadorAgente) -> FastAPI:
+def crear_router(orquestador: OrquestadorAgente, repositorio_sesiones: RepositorioSesiones) -> FastAPI:
+    def _obtener_sesion(usuario_id: str) -> SesionConversacion:
+        return repositorio_sesiones.obtener("web", usuario_id) or SesionConversacion(
+            canal="web", usuario_id=usuario_id
+        )
+
     @app.post("/chat", response_model=RespuestaAgente)
     def chat(payload: MensajeEntrante):
-        sesion = _sesiones.setdefault(
-            payload.usuario_id,
-            SesionConversacion(canal="web", usuario_id=payload.usuario_id),
-        )
+        sesion = _obtener_sesion(payload.usuario_id)
         respuesta = orquestador.responder(sesion, payload.mensaje)
+        repositorio_sesiones.guardar(sesion)
         return RespuestaAgente(respuesta=respuesta)
 
     @app.post("/chat/stream")
     def chat_stream(payload: MensajeEntrante):
-        sesion = _sesiones.setdefault(
-            payload.usuario_id,
-            SesionConversacion(canal="web", usuario_id=payload.usuario_id),
-        )
+        sesion = _obtener_sesion(payload.usuario_id)
 
         def eventos_sse():
             try:
@@ -72,6 +68,8 @@ def crear_router(orquestador: OrquestadorAgente) -> FastAPI:
                         yield f"event: done\ndata: {json.dumps({'respuesta': evento['respuesta']})}\n\n"
             except Exception as exc:  # noqa: BLE001 — un fallo se convierte en un evento, no en una conexión cortada
                 yield f"event: error\ndata: {json.dumps({'mensaje': str(exc)})}\n\n"
+            finally:
+                repositorio_sesiones.guardar(sesion)
 
         return StreamingResponse(
             eventos_sse(),

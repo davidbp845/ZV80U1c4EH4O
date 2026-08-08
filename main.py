@@ -25,6 +25,7 @@ from adapters.out.llm_anthropic import ProveedorLLMAnthropic
 from adapters.out.llm_cohere import ProveedorLLMCohere
 from adapters.out.llm_mock import ProveedorLLMMock
 from adapters.out.llm_openai import ProveedorLLMOpenAI
+from adapters.out.repositorio_sesiones_memoria import RepositorioSesionesMemoria
 from adapters.out.repositorios_memoria import (
     RepositorioCitasMemoria,
     RepositorioClientesMemoria,
@@ -34,6 +35,7 @@ from adapters.out.repositorios_memoria import (
 )
 from adapters.out.vector_store import RepositorioConocimientoChroma
 from application.orchestrator import OrquestadorAgente
+from application.ports import RepositorioSesiones
 from application.prompts import construir_system_prompt
 from application.tools import EjecutorHerramientas
 from config.loader import cargar_config, construir_profesionales, construir_servicios
@@ -135,10 +137,22 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
     return OrquestadorAgente(llm=llm, ejecutor_herramientas=ejecutor, system_prompt=system_prompt), config
 
 
+def construir_repositorio_sesiones() -> RepositorioSesiones:
+    # Igual que DATABASE_URL/GOOGLE_CALENDAR_*: opcional, y sin ella el
+    # sistema sigue funcionando exactamente como hasta ahora (sesiones
+    # en memoria del proceso, no sobreviven a un reinicio).
+    redis_url = os.environ.get("REDIS_URL")
+    if redis_url:
+        from adapters.out.repositorio_sesiones_redis import RepositorioSesionesRedis
+        return RepositorioSesionesRedis(redis_url)
+    return RepositorioSesionesMemoria()
+
+
 def main():
     orquestador, config = construir_sistema()
+    repositorio_sesiones = construir_repositorio_sesiones()
 
-    app = crear_router(orquestador)
+    app = crear_router(orquestador, repositorio_sesiones)
 
     hilo_web = threading.Thread(
         target=lambda: uvicorn.run(app, host="0.0.0.0", port=8000),
@@ -150,7 +164,7 @@ def main():
     if config.get("canales", {}).get("telegram"):
         token = os.environ.get("TELEGRAM_BOT_TOKEN")
         if token:
-            bot = crear_bot(token, orquestador)
+            bot = crear_bot(token, orquestador, repositorio_sesiones)
             logger.info("Bot de Telegram iniciado.")
             bot.run_polling()
         else:
