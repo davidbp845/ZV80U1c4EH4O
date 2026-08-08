@@ -5,10 +5,11 @@ from datetime import date, datetime, time
 
 import pytest
 
-from domain.entities import Cita, LineaPedido, Profesional, Servicio
-from domain.exceptions import ProfesionalNoDisponible, ServicioNoExiste
+from domain.entities import Cita, EstadoPedido, LineaPedido, Pedido, Profesional, Servicio
+from domain.exceptions import PedidoNoExiste, ProfesionalNoDisponible, ServicioNoExiste, TransicionEstadoInvalida
 from domain.use_cases import (
     _DIAS_SEMANA_ES,
+    CambiarEstadoPedido,
     CancelarReserva,
     ComprobarDisponibilidad,
     ConsultarConocimientoNegocio,
@@ -95,14 +96,20 @@ class FakeRepoClientes:
 
 
 class FakeRepoPedidos:
-    def __init__(self):
-        self._data = {}
+    def __init__(self, pedidos=None):
+        self._data = {p.id: p for p in (pedidos or [])}
 
     def guardar(self, pedido):
         self._data[pedido.id] = pedido
 
     def obtener(self, pedido_id):
         return self._data.get(pedido_id)
+
+    def listar_pendientes(self):
+        return [
+            p for p in self._data.values()
+            if p.estado not in (EstadoPedido.ENTREGADO, EstadoPedido.CANCELADO)
+        ]
 
 
 class FakeRepoConocimiento:
@@ -336,6 +343,40 @@ class TestRegistrarPedido:
         lineas = [LineaPedido(servicio_id="no_existe", cantidad=1)]
         with pytest.raises(ServicioNoExiste):
             caso.ejecutar("cliente1", lineas)
+
+
+class TestCambiarEstadoPedido:
+    def test_lanza_si_pedido_no_existe(self):
+        caso = CambiarEstadoPedido(FakeRepoPedidos())
+        with pytest.raises(PedidoNoExiste):
+            caso.ejecutar("no_existe", EstadoPedido.EN_PREPARACION)
+
+    def test_transicion_valida_actualiza_y_guarda(self):
+        pedido = Pedido.nuevo("cliente1", [LineaPedido(servicio_id="masaje", cantidad=1)])
+        repo = FakeRepoPedidos([pedido])
+        caso = CambiarEstadoPedido(repo)
+
+        actualizado = caso.ejecutar(pedido.id, EstadoPedido.EN_PREPARACION)
+
+        assert actualizado.estado == EstadoPedido.EN_PREPARACION
+        assert repo.obtener(pedido.id).estado == EstadoPedido.EN_PREPARACION
+
+    def test_lanza_si_transicion_invalida(self):
+        pedido = Pedido.nuevo("cliente1", [LineaPedido(servicio_id="masaje", cantidad=1)])
+        repo = FakeRepoPedidos([pedido])
+        caso = CambiarEstadoPedido(repo)
+
+        with pytest.raises(TransicionEstadoInvalida):
+            caso.ejecutar(pedido.id, EstadoPedido.ENTREGADO)
+
+    def test_estado_terminal_no_admite_transicion(self):
+        pedido = Pedido.nuevo("cliente1", [LineaPedido(servicio_id="masaje", cantidad=1)])
+        pedido.estado = EstadoPedido.ENTREGADO
+        repo = FakeRepoPedidos([pedido])
+        caso = CambiarEstadoPedido(repo)
+
+        with pytest.raises(TransicionEstadoInvalida):
+            caso.ejecutar(pedido.id, EstadoPedido.CANCELADO)
 
 
 class TestConsultarConocimientoNegocio:

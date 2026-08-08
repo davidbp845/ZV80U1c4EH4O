@@ -16,3 +16,4 @@ alembic>=1.13
 google-api-python-client>=2.140
 google-auth>=2.34
 redis>=5.0
+streamlit>=1.38

@@ -82,6 +82,11 @@ class RepositorioCitasPostgres(RepositorioCitas):
             ).all()
             return [self._a_entidad(f) for f in filas if f.inicio.date() == dia]
 
+    def citas_en_fecha(self, dia: date) -> list[Cita]:
+        with Session(self._engine) as sesion:
+            filas = sesion.exec(select(CitaDB)).all()
+            return [self._a_entidad(f) for f in filas if f.inicio.date() == dia]
+
     def cancelar(self, cita_id) -> None:
         cita_id = _como_uuid(cita_id)
         if cita_id is None:
@@ -179,16 +184,28 @@ class RepositorioPedidosPostgres(RepositorioPedidos):
             cabecera = sesion.get(PedidoDB, pedido_id)
             if cabecera is None:
                 return None
-            lineas = sesion.exec(
-                select(LineaPedidoDB).where(LineaPedidoDB.pedido_id == pedido_id)
+            return self._a_entidad(sesion, cabecera)
+
+    def listar_pendientes(self) -> list[Pedido]:
+        estados_terminales = (EstadoPedido.ENTREGADO.value, EstadoPedido.CANCELADO.value)
+        with Session(self._engine) as sesion:
+            cabeceras = sesion.exec(
+                select(PedidoDB).where(PedidoDB.estado.not_in(estados_terminales))
             ).all()
-            return Pedido(
-                id=cabecera.id,
-                cliente_id=cabecera.cliente_id,
-                lineas=[
-                    LineaPedido(servicio_id=linea.servicio_id, cantidad=linea.cantidad, notas=linea.notas)
-                    for linea in lineas
-                ],
-                estado=EstadoPedido(cabecera.estado),
-                creado_en=cabecera.creado_en,
-            )
+            return [self._a_entidad(sesion, c) for c in cabeceras]
+
+    @staticmethod
+    def _a_entidad(sesion: Session, cabecera: PedidoDB) -> Pedido:
+        lineas = sesion.exec(
+            select(LineaPedidoDB).where(LineaPedidoDB.pedido_id == cabecera.id)
+        ).all()
+        return Pedido(
+            id=cabecera.id,
+            cliente_id=cabecera.cliente_id,
+            lineas=[
+                LineaPedido(servicio_id=linea.servicio_id, cantidad=linea.cantidad, notas=linea.notas)
+                for linea in lineas
+            ],
+            estado=EstadoPedido(cabecera.estado),
+            creado_en=cabecera.creado_en,
+        )

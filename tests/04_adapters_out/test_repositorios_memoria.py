@@ -7,7 +7,7 @@ from adapters.out.repositorios_memoria import (
     RepositorioProfesionalesMemoria,
     RepositorioServiciosMemoria,
 )
-from domain.entities import Cita, Cliente, EstadoCita, LineaPedido, Pedido, Profesional, Servicio
+from domain.entities import Cita, Cliente, EstadoCita, EstadoPedido, LineaPedido, Pedido, Profesional, Servicio
 
 
 def test_repositorio_servicios_obtener_y_listar():
@@ -43,6 +43,20 @@ def test_repositorio_citas_guardar_y_filtrar_por_fecha():
     resultado = repo.citas_de_profesional_en_fecha("ana", date(2026, 8, 3))
 
     assert resultado == [cita1]
+
+
+def test_repositorio_citas_en_fecha_agrega_todos_los_profesionales():
+    repo = RepositorioCitasMemoria()
+    cita_ana = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
+    cita_beatriz = Cita.nueva("s1", "beatriz", "c2", datetime(2026, 8, 3, 11, 0), datetime(2026, 8, 3, 12, 0))
+    cita_otro_dia = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 4, 9, 0), datetime(2026, 8, 4, 10, 0))
+    repo.guardar(cita_ana)
+    repo.guardar(cita_beatriz)
+    repo.guardar(cita_otro_dia)
+
+    resultado = repo.citas_en_fecha(date(2026, 8, 3))
+
+    assert set(c.id for c in resultado) == {cita_ana.id, cita_beatriz.id}
 
 
 def test_repositorio_citas_cancelar():
@@ -86,3 +100,17 @@ def test_repositorio_pedidos():
 
     assert repo.obtener(pedido.id) is pedido
     assert repo.obtener("no_existe") is None
+
+
+def test_repositorio_pedidos_listar_pendientes_excluye_estados_terminales():
+    repo = RepositorioPedidosMemoria()
+    pendiente = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    entregado = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    entregado.estado = EstadoPedido.ENTREGADO
+    cancelado = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    cancelado.estado = EstadoPedido.CANCELADO
+    repo.guardar(pendiente)
+    repo.guardar(entregado)
+    repo.guardar(cancelado)
+
+    assert repo.listar_pendientes() == [pendiente]

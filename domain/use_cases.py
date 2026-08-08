@@ -11,11 +11,17 @@ from uuid import UUID
 
 from .entities import (
     Cita,
+    EstadoPedido,
     LineaPedido,
     Pedido,
     SlotDisponible,
 )
-from .exceptions import ProfesionalNoDisponible, ServicioNoExiste
+from .exceptions import (
+    PedidoNoExiste,
+    ProfesionalNoDisponible,
+    ServicioNoExiste,
+    TransicionEstadoInvalida,
+)
 from .ports import (
     RepositorioCitas,
     RepositorioClientes,
@@ -187,6 +193,38 @@ class RegistrarPedido:
             if self._servicios.obtener(linea.servicio_id) is None:
                 raise ServicioNoExiste(linea.servicio_id)
         pedido = Pedido.nuevo(cliente_id, lineas)
+        self._pedidos.guardar(pedido)
+        return pedido
+
+
+# Transiciones válidas del ciclo de vida de un pedido. Un estado
+# terminal (entregado/cancelado) no admite transición: {} en el mapa.
+_TRANSICIONES_PEDIDO_VALIDAS: dict[EstadoPedido, set[EstadoPedido]] = {
+    EstadoPedido.RECIBIDO: {EstadoPedido.EN_PREPARACION, EstadoPedido.CANCELADO},
+    EstadoPedido.EN_PREPARACION: {EstadoPedido.LISTO, EstadoPedido.CANCELADO},
+    EstadoPedido.LISTO: {EstadoPedido.ENTREGADO, EstadoPedido.CANCELADO},
+    EstadoPedido.ENTREGADO: set(),
+    EstadoPedido.CANCELADO: set(),
+}
+
+
+class CambiarEstadoPedido:
+    """Transiciona el estado de un pedido (ej. 'recibido' -> 'en
+    preparación'), usado por el panel interno para gestionar pedidos
+    pendientes. Valida la transición antes de delegar en el repo."""
+
+    def __init__(self, pedidos: RepositorioPedidos):
+        self._pedidos = pedidos
+
+    def ejecutar(self, pedido_id: UUID, nuevo_estado: EstadoPedido) -> Pedido:
+        pedido = self._pedidos.obtener(pedido_id)
+        if pedido is None:
+            raise PedidoNoExiste(pedido_id)
+
+        if nuevo_estado not in _TRANSICIONES_PEDIDO_VALIDAS[pedido.estado]:
+            raise TransicionEstadoInvalida(pedido.estado, nuevo_estado)
+
+        pedido.estado = nuevo_estado
         self._pedidos.guardar(pedido)
         return pedido
 

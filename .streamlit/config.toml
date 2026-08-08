@@ -1,0 +1,5 @@
+[client]
+# Oculta el botón "Deploy" (a Streamlit Community Cloud) y el menú de
+# hamburguesa por defecto de la barra superior: panel_empleados/ es una
+# app interna con datos de citas/pedidos, no algo para publicar ahí.
+toolbarMode = "minimal"

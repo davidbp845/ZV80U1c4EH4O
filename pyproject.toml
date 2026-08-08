@@ -25,6 +25,10 @@ select = [
 # En ambos casos el import fuera de la cabecera es intencional.
 "main.py" = ["E402"]
 "tests/**/*.py" = ["E402"]
+# streamlit_app.py necesita insertar la raíz del repo en sys.path antes
+# de importar domain/application/adapters/config (ver comentario en el
+# propio fichero) — igual motivo que main.py arriba.
+"panel_empleados/streamlit_app.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -36,6 +36,20 @@ def test_citas_guardar_y_filtrar_por_fecha():
     assert resultado[0].estado == EstadoCita.PENDIENTE
 
 
+def test_citas_en_fecha_agrega_todos_los_profesionales():
+    repo = RepositorioCitasPostgres(_engine())
+    cita_ana = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
+    cita_beatriz = Cita.nueva("s1", "beatriz", "c2", datetime(2026, 8, 3, 11, 0), datetime(2026, 8, 3, 12, 0))
+    cita_otro_dia = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 4, 9, 0), datetime(2026, 8, 4, 10, 0))
+    repo.guardar(cita_ana)
+    repo.guardar(cita_beatriz)
+    repo.guardar(cita_otro_dia)
+
+    resultado = repo.citas_en_fecha(date(2026, 8, 3))
+
+    assert {c.id for c in resultado} == {cita_ana.id, cita_beatriz.id}
+
+
 def test_citas_cancelar():
     repo = RepositorioCitasPostgres(_engine())
     cita = Cita.nueva("s1", "ana", "c1", datetime(2026, 8, 3, 9, 0), datetime(2026, 8, 3, 10, 0))
@@ -120,3 +134,19 @@ def test_pedidos_guardar_de_nuevo_sustituye_las_lineas():
 def test_pedidos_obtener_inexistente_devuelve_none():
     repo = RepositorioPedidosPostgres(_engine())
     assert repo.obtener("no_existe") is None
+
+
+def test_pedidos_listar_pendientes_excluye_estados_terminales():
+    repo = RepositorioPedidosPostgres(_engine())
+    pendiente = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    entregado = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    entregado.estado = EstadoPedido.ENTREGADO
+    cancelado = Pedido.nuevo("c1", [LineaPedido(servicio_id="s1", cantidad=1)])
+    cancelado.estado = EstadoPedido.CANCELADO
+    repo.guardar(pendiente)
+    repo.guardar(entregado)
+    repo.guardar(cancelado)
+
+    resultado = repo.listar_pendientes()
+
+    assert {p.id for p in resultado} == {pendiente.id}

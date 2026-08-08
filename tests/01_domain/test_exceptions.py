@@ -1,6 +1,13 @@
 from datetime import datetime
 
-from domain.exceptions import DominioError, ProfesionalNoDisponible, ServicioNoExiste
+from domain.entities import EstadoPedido
+from domain.exceptions import (
+    DominioError,
+    PedidoNoExiste,
+    ProfesionalNoDisponible,
+    ServicioNoExiste,
+    TransicionEstadoInvalida,
+)
 
 
 def test_servicio_no_existe_es_dominio_error():
@@ -21,3 +28,17 @@ def test_profesional_no_disponible_es_dominio_error():
 
 def test_dominio_error_es_exception():
     assert issubclass(DominioError, Exception)
+
+
+def test_pedido_no_existe_es_dominio_error():
+    exc = PedidoNoExiste("pedido-x")
+    assert isinstance(exc, DominioError)
+    assert exc.pedido_id == "pedido-x"
+    assert "pedido-x" in str(exc)
+
+
+def test_transicion_estado_invalida_es_dominio_error():
+    exc = TransicionEstadoInvalida(EstadoPedido.ENTREGADO, EstadoPedido.RECIBIDO)
+    assert isinstance(exc, DominioError)
+    assert exc.estado_actual == EstadoPedido.ENTREGADO
+    assert exc.estado_nuevo == EstadoPedido.RECIBIDO

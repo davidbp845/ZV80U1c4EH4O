@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from domain.entities import Cita, Cliente, Pedido, Profesional, Servicio
+from domain.entities import Cita, Cliente, EstadoPedido, Pedido, Profesional, Servicio
 from domain.ports import (
     RepositorioCitas,
     RepositorioClientes,
@@ -56,6 +56,9 @@ class RepositorioCitasMemoria(RepositorioCitas):
             if c.profesional_id == profesional_id and c.inicio.date() == dia
         ]
 
+    def citas_en_fecha(self, dia: date) -> list[Cita]:
+        return [c for c in self._data.values() if c.inicio.date() == dia]
+
     def cancelar(self, cita_id) -> None:
         if cita_id in self._data:
             from domain.entities import EstadoCita
@@ -85,3 +88,9 @@ class RepositorioPedidosMemoria(RepositorioPedidos):
 
     def obtener(self, pedido_id) -> Pedido | None:
         return self._data.get(pedido_id)
+
+    def listar_pendientes(self) -> list[Pedido]:
+        return [
+            p for p in self._data.values()
+            if p.estado not in (EstadoPedido.ENTREGADO, EstadoPedido.CANCELADO)
+        ]

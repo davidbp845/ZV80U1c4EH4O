@@ -53,6 +53,12 @@ class RepositorioCitas(ABC):
     ) -> list[Cita]: ...
 
     @abstractmethod
+    def citas_en_fecha(self, dia: date) -> list[Cita]:
+        """Todas las citas de ese día, de cualquier profesional —
+        la agenda agregada que necesita el panel interno."""
+        ...
+
+    @abstractmethod
     def cancelar(self, cita_id: UUID) -> None: ...
 
 
@@ -73,6 +79,13 @@ class RepositorioPedidos(ABC):
 
     @abstractmethod
     def obtener(self, pedido_id: UUID) -> Pedido | None: ...
+
+    @abstractmethod
+    def listar_pendientes(self) -> list[Pedido]:
+        """Pedidos que aún no han llegado a un estado terminal
+        (ni entregados ni cancelados) — lo que el panel interno
+        necesita gestionar activamente."""
+        ...
 
 
 # ---------- Puertos de salida: conocimiento e IA ----------
