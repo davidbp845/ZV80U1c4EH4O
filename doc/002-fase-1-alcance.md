@@ -55,16 +55,24 @@ solapan con citas ya existentes. Es una implementación deliberadamente simple
 profesional) que basta para el alcance de Fase I y que un negocio con reglas
 de agenda más complejas tendría que extender.
 
-Dos piezas de este módulo están señaladas como pendientes de mejora, no
-porque falten sino porque el modelo actual es más simple de lo que el negocio
-real necesitará:
+Una pieza de este módulo quedó señalada como pendiente de mejora y ya se
+resolvió — decidiendo explícitamente no construirla: **#8 — Tabla
+profesional_servicio (N:M)** (cerrado, no aplica) planteaba que la relación
+entre un profesional y los servicios que ofrece, hoy una lista de IDs dentro
+de la propia entidad `Profesional` (`servicios_ids: list[str]`), pasara a ser
+una relación N:M de verdad en Postgres, con tabla intermedia. Pero esa tabla
+solo tiene sentido si el catálogo (servicios/profesionales) deja de derivarse
+de `business.yaml` en cada arranque y pasa a persistirse en Postgres — y esa
+decisión, evaluada explícitamente, se descartó por ahora: la ventaja (poder
+editar el catálogo en caliente desde un panel admin sin redeploy) no compensa
+el coste (replicar en otro sitio la validación de `config/schema.py`, más
+`RepositorioServiciosPostgres`/`RepositorioProfesionalesPostgres` nuevos) sin
+que exista todavía una necesidad concreta de esa edición en caliente. Mientras
+nadie la pida, `business.yaml` como fuente de verdad del catálogo sigue siendo
+lo más simple.
 
-- **#8 — Tabla profesional_servicio (N:M)** (Backlog): hoy la relación entre
-  un profesional y los servicios que ofrece es una lista de IDs dentro de la
-  entidad `Profesional` (`servicios_ids: list[str]`) — funciona, pero no es una
-  relación N:M de verdad a nivel de persistencia (no hay tabla intermedia en
-  Postgres), lo que limita cosas como "¿qué profesionales dan este servicio?"
-  a nivel de consulta SQL eficiente.
+Sigue abierta, en cambio, una revisión más amplia del modelo de datos:
+
 - **#36 — Revisar modelo de datos** (Backlog): revisión más amplia de si el
   modelo actual (una única entidad `Servicio` sin variantes, un `Cliente` sin
   historial estructurado más allá de `notas: str`) aguanta un negocio real más
@@ -221,6 +229,15 @@ mensajes entrantes de un bot de Telegram. Ninguno de los dos contiene lógica
 de negocio — su único trabajo es traducir HTTP o el SDK de Telegram a una
 llamada al orquestador y de vuelta.
 
+El canal de Telegram funciona por *polling* (`bot.run_polling()`) — es el
+propio proceso el que pregunta a los servidores de Telegram si hay mensajes
+nuevos, no al revés — así que, a diferencia de un webhook, no necesita
+dominio público ni HTTPS para probarse: **#39** (cerrado) documenta la
+verificación manual end-to-end con un bot real creado vía
+[@BotFather](https://t.me/BotFather), confirmando que responde con el mismo
+`OrquestadorAgente` que el chat web (RAG, herramientas de reserva) y que la
+sesión se mantiene por `usuario_id` de Telegram entre mensajes.
+
 ## 6. Persistencia: qué sobrevive a un reinicio
 
 **Qué resuelve:** por defecto, todo el estado del sistema (citas, clientes,
@@ -271,7 +288,7 @@ una cita existe.
 "funcione en la demo" — esto cubre desde tests hasta bugs de producción reales
 encontrados probando el flujo completo.
 
-- **86 tests iniciales → 184 hoy** (#5, cerrado, y crecido orgánicamente desde
+- **86 tests iniciales → 196 hoy** (#5, cerrado, y crecido orgánicamente desde
   entonces): la suite sigue la misma estructura en capas que la arquitectura
   (`tests/01_domain` → `tests/06_main`, de dentro hacia fuera), con fakes
   hechos a mano para los tests de dominio y mocks de los SDKs externos
@@ -290,9 +307,16 @@ encontrados probando el flujo completo.
   también contra OpenAI además de Cohere tras el fix.
 - **#35** (cerrado): bug de UI del widget de chat (se encogía al recibir una
   respuesta comprimida durante una conversación real).
-- **#19 — Type-checking (mypy)** (Ready, sin empezar): hoy el proyecto no
-  tiene ningún chequeo de tipos estático configurado; `ruff` cubre lint pero
-  no tipos.
+- **#19 — Type-checking (mypy)** (cerrado, parcial/incremental tal como
+  planteaba el propio issue): `mypy` corre en CI sobre `domain/` y
+  `application/` con la exigencia alta (`disallow_untyped_defs`), que son las
+  capas sin dependencias externas — pasa limpio. Extenderlo a `adapters/` y
+  `main.py` se dejó explícitamente para otra iteración: `mypy .` sobre todo el
+  repo da hoy 47 errores ahí (incompatibilidades de tipos entre `chromadb` y
+  `sentence-transformers`, un `dict` con tipos heterogéneos en
+  `llm_cohere.py`, variables reasignadas entre implementaciones en
+  memoria/Postgres en `main.py::construir_sistema` sin anotar con el tipo del
+  puerto) — deuda conocida y documentada, no una omisión.
 
 ## 8. El sitio web público y su SEO
 
@@ -335,22 +359,58 @@ contenido público están enlazados en la misma página.
 ver la agenda del día y los pedidos pendientes sin tener que hablar con el
 propio chat del asistente para consultarlo.
 
-**Tecnología (planificada, no construida aún):** [Streamlit]
-(`panel_empleados/streamlit_app.py`), issue **#10** (Backlog). Absorbió
-también el alcance de **#25 — Interfaz Admin Streamlit** (cerrado como
-duplicado, fusionado aquí: su única pieza de MVP, un botón de "reindexar
-RAG", pasa a ser parte de este mismo panel en vez de una app separada). El
-plan documentado en el issue requiere primero ampliar el dominio —hoy no
-existen ni una consulta de "agenda del día agregada por todos los
-profesionales" ni un caso de uso `CambiarEstadoPedido`— y contempla un gate de
-acceso mínimo por contraseña compartida (`PANEL_EMPLEADOS_PASSWORD`, opcional,
-mismo patrón que el resto de variables de entorno del proyecto: sin ella, el
-panel se abre sin gate, cómodo para desarrollo local).
+**Tecnología (construida):** [Streamlit](https://streamlit.io/)
+(`panel_empleados/streamlit_app.py`),
+issue **#10** (cerrado). Absorbió también el alcance de **#25 — Interfaz
+Admin Streamlit** (cerrado como duplicado, fusionado aquí: su única pieza de
+MVP, un botón de "reindexar RAG", pasa a ser parte de este mismo panel en vez
+de una app separada). Construirlo requirió ampliar primero el dominio con dos
+piezas que no existían: `RepositorioCitas.citas_en_fecha(dia)` (agenda
+agregada de *todos* los profesionales, distinta de
+`citas_de_profesional_en_fecha`, que ya existía pero es por profesional) y el
+caso de uso `CambiarEstadoPedido`, con una pequeña máquina de estados
+(`_TRANSICIONES_PEDIDO_VALIDAS`) que valida la transición antes de delegar en
+`RepositorioPedidos.listar_pendientes()` — un pedido ya `entregado` o
+`cancelado`, por ejemplo, no admite ninguna transición más.
 
-**Relacionado — #12: Adaptador NotificadorMensajes** (Backlog): el puerto
-`NotificadorMensajes` (`domain/ports.py`) ya existe en el dominio (enviar un
-mensaje saliente a un canal — confirmaciones, recordatorios), pero no tiene
-ninguna implementación real conectada todavía.
+El panel consume esos casos de uso directamente, sin pasar por el orquestador
+ni por ningún LLM (construye sus propios repositorios igual que
+`main.py::construir_sistema()`: Postgres si hay `DATABASE_URL`, en memoria si
+no). Tres secciones — agenda del día (solo lectura), pedidos pendientes (con
+cambio de estado) y un botón de reindexado de RAG — con un enfoque
+mobile-first deliberadamente barato: la navegación vive en `st.sidebar`, que
+Streamlit ya colapsa por sí solo en pantallas estrechas, y el contenido son
+tarjetas apiladas (`st.container(border=True)`) en vez de tablas o columnas,
+que en móvil fuerzan scroll horizontal. Un gate de acceso mínimo
+(`PANEL_EMPLEADOS_PASSWORD`, opcional, mismo patrón "sin ella, se abre sin
+gate" que el resto de variables de entorno del proyecto) protege el acceso,
+ya que el panel muestra datos de citas/pedidos que no deberían quedar
+abiertos a quien tenga la URL.
+
+Dos detalles no obvios de construir un segundo entrypoint de Python fuera de
+`main.py`: `streamlit run` pone en `sys.path` el directorio del propio script
+(`panel_empleados/`), no la raíz del repo, así que hace falta el mismo
+`sys.path.insert(...)` que ya usa `conftest.py` para los tests — sin él, falla
+con `ModuleNotFoundError: No module named 'adapters'` en cuanto alguien lo
+ejecuta de verdad (un `curl` al puerto no lo detecta: Streamlit solo ejecuta
+el script cuando un navegador abre sesión por WebSocket, así que un simple
+chequeo HTTP puede dar un falso positivo). Y `.streamlit/config.toml`
+(`client.toolbarMode = "minimal"`) oculta el botón "Deploy" que Streamlit
+añade por defecto a cualquier app local — este panel es interno, no algo
+pensado para Streamlit Community Cloud.
+
+**Relacionado — #12 (cerrado) y #38 (Backlog):** el puerto `NotificadorMensajes`
+(`domain/ports.py`) ya tiene una implementación real,
+`NotificadorMensajesTelegram` (#12), pero deliberadamente sin conectar a
+nada — ni `CrearReserva`/`CancelarReserva` la reciben como dependencia, ni
+`main.py` la instancia. Esa conexión (mandar un mensaje de
+confirmación/cancelación automático al crear o cancelar una reserva) es el
+issue **#38**, y está bloqueada por una decisión de diseño pendiente:
+`NotificadorMensajesTelegram.enviar()` necesita el `chat_id` de Telegram del
+cliente, pero `Cliente` (`domain/entities.py`) hoy solo guarda `telefono` y
+`email` — no hay ningún campo para identificador de contacto por canal, así
+que hay que decidir si vive en `Cliente` (ej. `telegram_chat_id`) o se
+resuelve desde `SesionConversacion` en el momento del envío.
 
 ## 10. Base para operar en producción
 
@@ -363,15 +423,21 @@ para desarrollo que no deberían llegar tal cual a producción.
   — introducción, arquitectura, conocimiento del negocio, cómo extender a
   otro negocio, despliegue, API.
 - **#37 — Puesta en producción: checklist + arreglar CORS hardcodeado**
-  (Backlog): hoy `adapters/in_/fastapi_app.py` tiene los orígenes CORS de
-  desarrollo (`localhost:5173/3000/4321`) hardcodeados en el código en vez de
-  en configuración — necesario resolverlo antes de un despliegue real, junto
-  con el resto del checklist de producción (qué variables son obligatorias,
-  qué healthchecks existen, etc.).
-- **#19 — Type-checking (mypy)** (ya mencionado en la sección 7, pero también
-  es parte de "estar listo para producción": tipado estático ayuda a que
-  refactors futuros —muy probables en cuanto se extienda a un segundo
-  negocio— no rompan cosas silenciosamente).
+  (abierto, parcialmente hecho): el bloqueante de código ya está resuelto —
+  `adapters/in_/fastapi_app.py` ya no tiene los orígenes CORS hardcodeados,
+  ahora son configurables vía `CORS_ORIGINS` (lista separada por comas),
+  manteniendo los orígenes de dev como default si no está definida. Lo que
+  queda abierto no es código de este repo sino decisiones y trabajo de
+  despliegue real: qué hacer con las sesiones en RAM y el proceso único antes
+  de abrir el dominio al público (¿asumirlo por ahora?, ¿rate limiting en
+  `/chat`, que hoy no tiene?), y la checklist de infraestructura en sí — DNS,
+  TLS, secrets, Postgres provisionado, indexar el vault, build del frontend.
+  Deliberadamente sigue abierto hasta que haya un despliegue real que la
+  recorra.
+- **#19 — Type-checking (mypy)** (ya mencionado en la sección 7 — cerrado de
+  forma incremental, `domain`/`application` cubiertos, `adapters`/`main.py`
+  pendientes): tipado estático ayuda a que refactors futuros —muy probables
+  en cuanto se extienda a un segundo negocio— no rompan cosas silenciosamente.
 
 ---
 
@@ -379,13 +445,16 @@ para desarrollo que no deberían llegar tal cual a producción.
 
 | Estado | Issues |
 |---|---|
-| **Hecho y cerrado** | #1, #2, #3, #4, #5, #6, #7, #9, #13, #18, #25 (fusionado en #10), #26, #27, #28, #29, #31, #32, #33, #34, #35 |
-| **Listo para empezar (Ready)** | #19, #23 |
-| **Backlog** | #8, #10, #12, #20, #21, #22, #36, #37 |
+| **Hecho y cerrado** | #1, #2, #3, #4, #5, #6, #7, #8 (no aplica), #9, #10, #12, #13, #18, #19 (parcial/incremental), #25 (fusionado en #10), #26, #27, #28, #29, #31, #32, #33, #34, #35, #39 |
+| **Listo para empezar (Ready)** | #23, #37 (parcial: CORS ya resuelto) |
+| **Backlog** | #20, #21, #22, #36, #38 |
 
-De 30 issues etiquetados `Fase I`, 20 están cerrados. Lo que queda por delante
+De 32 issues etiquetados `Fase I`, 25 están cerrados. Lo que queda por delante
 se concentra en tres frentes: **calidad conversacional** (#21, #22 — el modelo
 ya funciona, pero afinar el tono comercial y automatizar su verificación es
-trabajo continuo), **el panel interno** (#10, #12 — nada construido aún, solo
-diseñado) y **estar listo para producción de verdad** (#19, #20, #36, #37 —
-tipado, documentación, modelo de datos, y el checklist de despliegue).
+trabajo continuo), **notificaciones proactivas al cliente** (#38 — el
+adaptador de Telegram ya existe desde #12, falta conectarlo a
+`CrearReserva`/`CancelarReserva`, bloqueado en decidir dónde vive el chat_id
+del cliente) y **estar listo para producción de verdad** (#20, #23, #36, #37 —
+documentación, el token de Hugging Face, revisar el modelo de datos, y el
+resto del checklist de despliegue más allá del CORS ya arreglado).
