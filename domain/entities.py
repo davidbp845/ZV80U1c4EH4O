@@ -6,7 +6,7 @@ cambia de verdad entre negocios (masajes, restaurante, peluquería...).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -102,7 +102,7 @@ class Pedido:
     cliente_id: str
     lineas: list[LineaPedido]
     estado: EstadoPedido = EstadoPedido.RECIBIDO
-    creado_en: datetime = field(default_factory=datetime.utcnow)
+    creado_en: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @staticmethod
     def nuevo(cliente_id: str, lineas: list[LineaPedido]) -> Pedido:

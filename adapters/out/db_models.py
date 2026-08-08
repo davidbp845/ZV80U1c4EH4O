@@ -4,7 +4,7 @@ SQL. Los repositorios de adapters/out/repositorios_postgres.py son los
 únicos que traducen entre estas filas y las entidades de dominio."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
@@ -39,7 +39,7 @@ class PedidoDB(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     cliente_id: str
     estado: str
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class LineaPedidoDB(SQLModel, table=True):
