@@ -25,3 +25,23 @@ select = [
 # En ambos casos el import fuera de la cabecera es intencional.
 "main.py" = ["E402"]
 "tests/**/*.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = [
+    "frontend",
+    "vault_negocio",
+    "chroma_data",
+    "migrations/versions",
+]
+
+# domain/ y application/ no dependen de ningún SDK externo, así que
+# empiezan con la exigencia más alta; el resto del repo (adapters/,
+# main.py, tests/) se tipa de forma incremental más adelante.
+[[tool.mypy.overrides]]
+module = ["domain.*", "application.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true

@@ -12,6 +12,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import date
+from uuid import UUID
 
 from .entities import (
     Cita,
@@ -44,7 +45,7 @@ class RepositorioCitas(ABC):
     def guardar(self, cita: Cita) -> None: ...
 
     @abstractmethod
-    def obtener(self, cita_id) -> Cita | None: ...
+    def obtener(self, cita_id: UUID) -> Cita | None: ...
 
     @abstractmethod
     def citas_de_profesional_en_fecha(
@@ -52,7 +53,7 @@ class RepositorioCitas(ABC):
     ) -> list[Cita]: ...
 
     @abstractmethod
-    def cancelar(self, cita_id) -> None: ...
+    def cancelar(self, cita_id: UUID) -> None: ...
 
 
 class RepositorioClientes(ABC):
@@ -71,7 +72,7 @@ class RepositorioPedidos(ABC):
     def guardar(self, pedido: Pedido) -> None: ...
 
     @abstractmethod
-    def obtener(self, pedido_id) -> Pedido | None: ...
+    def obtener(self, pedido_id: UUID) -> Pedido | None: ...
 
 
 # ---------- Puertos de salida: conocimiento e IA ----------

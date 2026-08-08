@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta
+from uuid import UUID
 
 from .entities import (
     Cita,
@@ -18,6 +19,7 @@ from .exceptions import ProfesionalNoDisponible, ServicioNoExiste
 from .ports import (
     RepositorioCitas,
     RepositorioClientes,
+    RepositorioConocimiento,
     RepositorioPedidos,
     RepositorioProfesionales,
     RepositorioServicios,
@@ -136,9 +138,10 @@ class CrearReserva:
             # no debe impedir crear la reserva en el sistema.
             try:
                 profesional = self._profesionales.obtener(profesional_id)
-                cita.evento_calendario_id = self._calendario.crear_evento(
-                    cita, servicio, profesional
-                )
+                if profesional is not None:
+                    cita.evento_calendario_id = self._calendario.crear_evento(
+                        cita, servicio, profesional
+                    )
             except Exception:
                 logger.exception(
                     "No se pudo sincronizar la cita %s con el calendario externo",
@@ -158,7 +161,7 @@ class CancelarReserva:
         self._citas = citas
         self._calendario = calendario
 
-    def ejecutar(self, cita_id) -> None:
+    def ejecutar(self, cita_id: UUID) -> None:
         if self._calendario is not None:
             cita = self._citas.obtener(cita_id)
             if cita is not None and cita.evento_calendario_id:
@@ -193,7 +196,7 @@ class ConsultarConocimientoNegocio:
     de contenido documental (precios, políticas, horarios generales),
     delega en el puerto de conocimiento."""
 
-    def __init__(self, conocimiento):
+    def __init__(self, conocimiento: RepositorioConocimiento):
         self._conocimiento = conocimiento
 
     def ejecutar(self, consulta: str) -> dict:
