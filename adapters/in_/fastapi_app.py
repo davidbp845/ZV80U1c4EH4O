@@ -6,6 +6,7 @@ HTTP <-> orquestador.
 from __future__ import annotations
 
 import json
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,14 +20,25 @@ app = FastAPI(title="Orquestador agéntico — chat web")
 
 # Orígenes de dev habituales (Vite, alternativa común en 3000; 4321 es
 # el puerto por defecto de Astro) para que un frontend en desarrollo
-# pueda llamar al backend sin bloqueo CORS.
+# pueda llamar al backend sin bloqueo CORS. En producción, CORS_ORIGINS
+# (lista separada por comas) los sustituye por el/los dominio(s) real(es)
+# — mismo patrón "opcional, degrada al comportamiento de hoy" que
+# DATABASE_URL/GOOGLE_CALENDAR_*.
+_CORS_ORIGINS_DEV = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:4321",
+]
+_cors_origins_env = os.environ.get("CORS_ORIGINS", "")
+_cors_origins = (
+    [origen.strip() for origen in _cors_origins_env.split(",") if origen.strip()]
+    if _cors_origins_env
+    else _CORS_ORIGINS_DEV
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:4321",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

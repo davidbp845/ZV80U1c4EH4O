@@ -152,3 +152,33 @@ def test_cors_rechaza_origen_no_autorizado(cliente):
         },
     )
     assert "access-control-allow-origin" not in respuesta.headers
+
+
+def test_cors_origins_env_var_sustituye_los_origenes_de_dev(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "https://miapp.com, https://www.miapp.com")
+
+    import adapters.in_.fastapi_app as fastapi_app
+    importlib.reload(fastapi_app)
+
+    orquestador = FakeOrquestador()
+    repositorio_sesiones = RepositorioSesionesMemoria()
+    app = fastapi_app.crear_router(orquestador, repositorio_sesiones)
+    client = TestClient(app)
+
+    respuesta = client.options(
+        "/chat",
+        headers={
+            "Origin": "https://miapp.com",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert respuesta.headers["access-control-allow-origin"] == "https://miapp.com"
+
+    respuesta_dev = client.options(
+        "/chat",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert "access-control-allow-origin" not in respuesta_dev.headers
