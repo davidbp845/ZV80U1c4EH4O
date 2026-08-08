@@ -24,6 +24,7 @@ from adapters.in_.telegram_bot import crear_bot
 from adapters.out.llm_anthropic import ProveedorLLMAnthropic
 from adapters.out.llm_cohere import ProveedorLLMCohere
 from adapters.out.llm_mock import ProveedorLLMMock
+from adapters.out.llm_openai import ProveedorLLMOpenAI
 from adapters.out.repositorios_memoria import (
     RepositorioCitasMemoria,
     RepositorioClientesMemoria,
@@ -106,6 +107,8 @@ def construir_sistema(ruta_config: str = "config/business.yaml") -> OrquestadorA
         llm = ProveedorLLMMock()
     elif proveedor_llm == "cohere":
         llm = ProveedorLLMCohere()
+    elif proveedor_llm == "openai":
+        llm = ProveedorLLMOpenAI()
     else:
         llm = ProveedorLLMAnthropic()
 
